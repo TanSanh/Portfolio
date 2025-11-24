@@ -9,7 +9,16 @@ export const metadata: Metadata = {
   title: "Lập Trình Viên Backend - Portfolio",
   description:
     "Lập trình viên backend chuyên phát triển các hệ thống mạnh mẽ, an toàn và hiệu quả. Xây dựng APIs, quản lý database và tối ưu hóa hiệu suất hệ thống.",
-  keywords: ["portfolio", "backend", "API", "database", "lập trình", "developer", "NestJS", "Node.js"],
+  keywords: [
+    "portfolio",
+    "backend",
+    "API",
+    "database",
+    "lập trình",
+    "developer",
+    "NestJS",
+    "Node.js",
+  ],
   authors: [{ name: "Backend Developer" }],
   icons: {
     icon: "/assets/logo.png",
@@ -39,7 +48,7 @@ export default function RootLayout({
     <html lang="vi" className="dark">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,500,0,0&display=swap"
           rel="stylesheet"
         />
       </head>
