@@ -26,10 +26,10 @@ export function Hero() {
   };
 
   return (
-    <section className="relative flex min-h-screen items-start justify-center px-4 pt-20 pb-8 sm:px-8 sm:pt-20 md:px-16 md:pt-16 lg:px-24 lg:pt-16 xl:px-32 xl:pt-16 2xl:px-48 2xl:pt-20">
-      <div className="mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px]">
+    <section className="relative flex items-start justify-center pt-20 pb-16 sm:pt-24 sm:pb-24 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto max-w-6xl w-full">
         <motion.div
-          className="grid w-full grid-cols-1 items-center gap-8 lg:grid-cols-5 lg:gap-12 xl:gap-16 2xl:gap-20"
+          className="grid w-full grid-cols-1 items-center gap-8 lg:grid-cols-5 lg:gap-12"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -107,7 +107,7 @@ export function Hero() {
 
         {/* Scroll Indicator */}
         <motion.div
-          className="hidden flex-col items-center gap-2 pb-2 text-center sm:flex mt-4"
+          className="hidden flex-col items-center gap-2 text-center sm:flex mt-8"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1, duration: 0.6 }}
