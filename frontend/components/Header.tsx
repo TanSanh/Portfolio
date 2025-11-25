@@ -45,7 +45,7 @@ export function Header() {
               )}
             </div>
             <h2 className="text-lg font-bold leading-tight tracking-[-0.015em]">
-              Lập Trình Viên Backend
+              Portfolio-TanSanh
             </h2>
           </Link>
 

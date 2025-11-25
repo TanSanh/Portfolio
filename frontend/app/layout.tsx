@@ -6,7 +6,7 @@ import { Toaster } from "react-hot-toast";
 import { inter } from "./fonts";
 
 export const metadata: Metadata = {
-  title: "Lập Trình Viên Backend - Portfolio",
+  title: "Portfolio-TanSanh",
   description:
     "Lập trình viên backend chuyên phát triển các hệ thống mạnh mẽ, an toàn và hiệu quả. Xây dựng APIs, quản lý database và tối ưu hóa hiệu suất hệ thống.",
   keywords: [

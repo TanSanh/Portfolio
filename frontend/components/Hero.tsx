@@ -26,20 +26,20 @@ export function Hero() {
   };
 
   return (
-    <section className="relative flex min-h-screen items-center justify-center px-4 py-12 sm:px-8 md:px-16 lg:px-24 xl:px-32 2xl:px-48 2xl:py-20">
+    <section className="relative flex min-h-screen items-start justify-center px-4 pt-20 pb-8 sm:px-8 sm:pt-20 md:px-16 md:pt-16 lg:px-24 lg:pt-16 xl:px-32 xl:pt-16 2xl:px-48 2xl:pt-20">
       <div className="mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px]">
         <motion.div
-          className="grid w-full grid-cols-1 items-center gap-10 lg:grid-cols-5 lg:gap-16 xl:gap-20 2xl:gap-24"
+          className="grid w-full grid-cols-1 items-center gap-8 lg:grid-cols-5 lg:gap-12 xl:gap-16 2xl:gap-20"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           {/* Left Content */}
           <motion.div
-            className="flex flex-col gap-8 text-center lg:col-span-3 lg:text-left"
+            className="flex flex-col gap-6 text-center lg:col-span-3 lg:text-left"
             variants={itemVariants}
           >
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               <h1 className="text-4xl font-black leading-tight tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl 2xl:text-8xl text-white">
                 Lập Trình Viên Backend
               </h1>
@@ -51,7 +51,7 @@ export function Hero() {
               </p>
             </div>
 
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
               <Link
                 href="#work"
                 className="flex w-full min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:opacity-90 transition-opacity sm:w-auto"
@@ -107,7 +107,7 @@ export function Hero() {
 
         {/* Scroll Indicator */}
         <motion.div
-          className="hidden flex-col items-center gap-2 pb-8 text-center sm:flex mt-12"
+          className="hidden flex-col items-center gap-2 pb-2 text-center sm:flex mt-4"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1, duration: 0.6 }}
