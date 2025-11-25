@@ -13,6 +13,7 @@ const config: Config = {
         primary: "#0d59f2",
         "background-light": "#f5f6f8",
         "background-dark": "#101622",
+        "background-dark-secondary": "#1b1f27",
         "text-light-primary": "#212529",
         "text-dark-primary": "#f8f9fa",
         "text-light-secondary": "#6C757D",
@@ -32,4 +33,3 @@ const config: Config = {
   plugins: [],
 };
 export default config;
-

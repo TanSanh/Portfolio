@@ -18,7 +18,13 @@ export function Portfolio() {
   const [activeFilter, setActiveFilter] = useState("Tất Cả");
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const itemsPerPage = 3;
+
+  // Chỉ render SVG sau khi component đã mount trên client
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,79 +96,99 @@ export function Portfolio() {
                   }}
                 >
                   {/* Lưới wireframe công nghệ */}
-                  <svg
-                    className="absolute inset-0 w-full h-full animate-spin-slow"
-                    viewBox="0 0 200 200"
-                    style={{ animationDuration: "20s" }}
-                  >
-                    {/* Kinh tuyến (meridians) */}
-                    {[...Array(12)].map((_, i) => {
-                      const angle = i * 30;
-                      const x1 = 100 + 100 * Math.cos((angle * Math.PI) / 180);
-                      const y1 = 100 + 100 * Math.sin((angle * Math.PI) / 180);
-                      const x2 = 100 - 100 * Math.cos((angle * Math.PI) / 180);
-                      const y2 = 100 - 100 * Math.sin((angle * Math.PI) / 180);
-                      return (
-                        <line
-                          key={`meridian-${i}`}
-                          x1={x1}
-                          y1={y1}
-                          x2={x2}
-                          y2={y2}
-                          stroke="rgba(34, 211, 238, 0.5)"
-                          strokeWidth="0.8"
-                          className="animate-pulse"
-                          style={{
-                            filter:
-                              "drop-shadow(0 0 2px rgba(34, 211, 238, 0.8))",
-                            animationDelay: `${i * 0.1}s`,
-                          }}
-                        />
-                      );
-                    })}
-                    {/* Vĩ tuyến (parallels) */}
-                    {[...Array(6)].map((_, i) => {
-                      const radius = 20 + i * 30;
-                      return (
-                        <circle
-                          key={`parallel-${i}`}
-                          cx="100"
-                          cy="100"
-                          r={radius}
-                          fill="none"
-                          stroke="rgba(34, 211, 238, 0.4)"
-                          strokeWidth="0.8"
-                          className="animate-pulse"
-                          style={{
-                            animationDelay: `${i * 0.2}s`,
-                            filter:
-                              "drop-shadow(0 0 2px rgba(34, 211, 238, 0.6))",
-                          }}
-                        />
-                      );
-                    })}
-                    {/* Điểm nút giao nhau */}
-                    {[...Array(12)].map((_, i) => {
-                      const angle = i * 30;
-                      const x = 100 + 80 * Math.cos((angle * Math.PI) / 180);
-                      const y = 100 + 80 * Math.sin((angle * Math.PI) / 180);
-                      return (
-                        <circle
-                          key={`node-${i}`}
-                          cx={x}
-                          cy={y}
-                          r="2"
-                          fill="rgba(34, 211, 238, 0.9)"
-                          className="animate-pulse"
-                          style={{
-                            animationDelay: `${i * 0.15}s`,
-                            filter:
-                              "drop-shadow(0 0 4px rgba(34, 211, 238, 1))",
-                          }}
-                        />
-                      );
-                    })}
-                  </svg>
+                  {isMounted && (
+                    <svg
+                      className="absolute inset-0 w-full h-full animate-spin-slow"
+                      viewBox="0 0 200 200"
+                      style={{ animationDuration: "20s" }}
+                    >
+                      {/* Kinh tuyến (meridians) */}
+                      {[...Array(12)].map((_, i) => {
+                        const angle = i * 30;
+                        const x1 =
+                          Math.round(
+                            (100 + 100 * Math.cos((angle * Math.PI) / 180)) * 10
+                          ) / 10;
+                        const y1 =
+                          Math.round(
+                            (100 + 100 * Math.sin((angle * Math.PI) / 180)) * 10
+                          ) / 10;
+                        const x2 =
+                          Math.round(
+                            (100 - 100 * Math.cos((angle * Math.PI) / 180)) * 10
+                          ) / 10;
+                        const y2 =
+                          Math.round(
+                            (100 - 100 * Math.sin((angle * Math.PI) / 180)) * 10
+                          ) / 10;
+                        return (
+                          <line
+                            key={`meridian-${i}`}
+                            x1={x1}
+                            y1={y1}
+                            x2={x2}
+                            y2={y2}
+                            stroke="rgba(34, 211, 238, 0.5)"
+                            strokeWidth="0.8"
+                            className="animate-pulse"
+                            style={{
+                              filter:
+                                "drop-shadow(0 0 2px rgba(34, 211, 238, 0.8))",
+                              animationDelay: `${i * 0.1}s`,
+                            }}
+                          />
+                        );
+                      })}
+                      {/* Vĩ tuyến (parallels) */}
+                      {[...Array(6)].map((_, i) => {
+                        const radius = 20 + i * 30;
+                        return (
+                          <circle
+                            key={`parallel-${i}`}
+                            cx="100"
+                            cy="100"
+                            r={radius}
+                            fill="none"
+                            stroke="rgba(34, 211, 238, 0.4)"
+                            strokeWidth="0.8"
+                            className="animate-pulse"
+                            style={{
+                              animationDelay: `${i * 0.2}s`,
+                              filter:
+                                "drop-shadow(0 0 2px rgba(34, 211, 238, 0.6))",
+                            }}
+                          />
+                        );
+                      })}
+                      {/* Điểm nút giao nhau */}
+                      {[...Array(12)].map((_, i) => {
+                        const angle = i * 30;
+                        const x =
+                          Math.round(
+                            (100 + 80 * Math.cos((angle * Math.PI) / 180)) * 10
+                          ) / 10;
+                        const y =
+                          Math.round(
+                            (100 + 80 * Math.sin((angle * Math.PI) / 180)) * 10
+                          ) / 10;
+                        return (
+                          <circle
+                            key={`node-${i}`}
+                            cx={x}
+                            cy={y}
+                            r="2"
+                            fill="rgba(34, 211, 238, 0.9)"
+                            className="animate-pulse"
+                            style={{
+                              animationDelay: `${i * 0.15}s`,
+                              filter:
+                                "drop-shadow(0 0 4px rgba(34, 211, 238, 1))",
+                            }}
+                          />
+                        );
+                      })}
+                    </svg>
+                  )}
 
                   {/* Các điểm sáng công nghệ (nodes) */}
                   {[...Array(8)].map((_, i) => {
