@@ -49,7 +49,7 @@ export function Services() {
           {services.map((service, index) => (
             <motion.div
               key={service.title}
-              className="flex flex-1 gap-4 rounded-xl border border-white/10 bg-white/5 p-6 flex-col transition-all hover:shadow-lg hover:-translate-y-1 hover:border-primary/50"
+              className="flex h-full flex-1 flex-col gap-4 rounded-xl border border-white/10 bg-white/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1 hover:border-primary/50"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -93,7 +93,7 @@ export function Services() {
                   </svg>
                 )}
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex h-full flex-col gap-2">
                 <h3 className="text-lg font-bold leading-tight text-white">
                   {service.title}
                 </h3>
@@ -101,7 +101,7 @@ export function Services() {
                   {service.description}
                 </p>
                 <a
-                  className="text-primary text-sm font-semibold mt-2 hover:underline"
+                  className="text-primary text-sm font-semibold mt-auto pt-4 hover:underline"
                   href="#"
                 >
                   Tìm Hiểu Thêm

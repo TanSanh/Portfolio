@@ -16,6 +16,10 @@ interface Message {
   isRead?: boolean;
 }
 
+const NAME_REGEX = /^[a-zA-ZÀ-ỹ\s]{2,20}$/;
+const PHONE_REGEX = /^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
@@ -199,6 +203,8 @@ export function ChatWidget() {
     return () => {
       stopTyping();
     };
+    // stopTyping chỉ cần chạy khi unmount nên bỏ qua dependency warning
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Join conversation khi có conversationId
@@ -217,8 +223,34 @@ export function ChatWidget() {
 
   const handleStartChat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.fullName.trim()) {
+    const fullName = formData.fullName.trim();
+    const phone = formData.phone.trim();
+    const email = formData.email.trim();
+
+    if (!fullName) {
       toast.error("Vui lòng nhập họ và tên");
+      return;
+    }
+    if (!NAME_REGEX.test(fullName)) {
+      toast.error("Họ tên phải từ 2-20 ký tự, chỉ gồm chữ cái và khoảng trắng");
+      return;
+    }
+    if (!phone) {
+      toast.error("Vui lòng nhập số điện thoại");
+      return;
+    }
+    if (!PHONE_REGEX.test(phone)) {
+      toast.error(
+        "Số điện thoại không hợp lệ. Dùng định dạng Việt Nam (0/+84)."
+      );
+      return;
+    }
+    if (!email) {
+      toast.error("Vui lòng nhập email");
+      return;
+    }
+    if (!EMAIL_REGEX.test(email)) {
+      toast.error("Email không đúng định dạng");
       return;
     }
 
@@ -229,7 +261,7 @@ export function ChatWidget() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ fullName, phone, email }),
       });
 
       if (!response.ok) {
@@ -410,7 +442,10 @@ export function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             className="fixed bottom-24 right-6 z-50 w-96 max-w-[calc(100vw-3rem)] bg-background-dark-secondary rounded-lg shadow-2xl overflow-hidden flex flex-col border border-white/10"
-            style={{ maxHeight: "600px", height: "600px" }}
+            style={{
+              maxHeight: "90vh",
+              height: isStarted ? "600px" : "auto",
+            }}
           >
             {/* Header */}
             <div className="bg-primary text-white px-4 py-3 flex items-center justify-between">
@@ -455,7 +490,11 @@ export function ChatWidget() {
                     Vui lòng cung cấp thông tin để bắt đầu
                   </p>
 
-                  <form onSubmit={handleStartChat} className="space-y-4">
+                  <form
+                    onSubmit={handleStartChat}
+                    noValidate
+                    className="space-y-4"
+                  >
                     {/* Họ và tên */}
                     <div>
                       <label className="flex items-center gap-2 text-sm font-medium text-text-dark-primary mb-2">
@@ -480,7 +519,7 @@ export function ChatWidget() {
                         onChange={(e) =>
                           setFormData({ ...formData, fullName: e.target.value })
                         }
-                        placeholder="VD: Nguyễn Văn A"
+                        placeholder="VD: Hồ Tấn Sanh"
                         className="w-full px-4 py-2 bg-background-dark-secondary border border-white/10 rounded-lg text-text-dark-primary placeholder:text-text-dark-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         required
                       />
@@ -502,7 +541,7 @@ export function ChatWidget() {
                             d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                           />
                         </svg>
-                        Số điện thoại
+                        Số điện thoại <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="tel"
@@ -510,7 +549,12 @@ export function ChatWidget() {
                         onChange={(e) =>
                           setFormData({ ...formData, phone: e.target.value })
                         }
-                        placeholder="VD: 0931 000 000"
+                        placeholder="VD: 0987 000 000"
+                        title="Sử dụng số Việt Nam bắt đầu bằng 0 hoặc +84 và gồm 10 chữ số"
+                        inputMode="tel"
+                        maxLength={12}
+                        minLength={10}
+                        required
                         className="w-full px-4 py-2 bg-background-dark-secondary border border-white/10 rounded-lg text-text-dark-primary placeholder:text-text-dark-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
                     </div>
@@ -531,7 +575,7 @@ export function ChatWidget() {
                             d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                           />
                         </svg>
-                        Email
+                        Email <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="email"
@@ -539,7 +583,8 @@ export function ChatWidget() {
                         onChange={(e) =>
                           setFormData({ ...formData, email: e.target.value })
                         }
-                        placeholder="email@domain.com"
+                        placeholder="VD: hovaten@gmail.com"
+                        required
                         className="w-full px-4 py-2 bg-background-dark-secondary border border-white/10 rounded-lg text-text-dark-primary placeholder:text-text-dark-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
                     </div>

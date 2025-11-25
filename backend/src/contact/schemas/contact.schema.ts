@@ -11,8 +11,8 @@ export class Contact {
   @Prop({ required: true })
   email: string;
 
-  @Prop({ required: true })
-  subject: string;
+  @Prop({ required: false, default: '' })
+  subject?: string;
 
   @Prop({ required: true })
   message: string;
@@ -22,4 +22,3 @@ export class Contact {
 }
 
 export const ContactSchema = SchemaFactory.createForClass(Contact);
-

@@ -1,17 +1,39 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { FieldErrors, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
+const NAME_REGEX = /^[a-zA-ZÀ-ỹ\s]{2,20}$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
 const contactSchema = z.object({
-  fullName: z.string().min(2, "Tên phải có ít nhất 2 ký tự"),
-  email: z.string().email("Địa chỉ email không hợp lệ"),
-  subject: z.string().min(3, "Chủ đề phải có ít nhất 3 ký tự"),
-  message: z.string().min(10, "Tin nhắn phải có ít nhất 10 ký tự"),
+  fullName: z
+    .string()
+    .trim()
+    .regex(
+      NAME_REGEX,
+      "Họ tên phải từ 2-20 ký tự, chỉ gồm chữ cái và khoảng trắng"
+    ),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Vui lòng nhập địa chỉ email")
+    .regex(EMAIL_REGEX, "Địa chỉ email không hợp lệ"),
+  subject: z
+    .string()
+    .trim()
+    .max(100, "Chủ đề tối đa 100 ký tự")
+    .optional()
+    .or(z.literal("")),
+  message: z
+    .string()
+    .trim()
+    .min(10, "Tin nhắn phải có ít nhất 10 ký tự")
+    .max(500, "Tin nhắn tối đa 500 ký tự"),
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
@@ -27,9 +49,29 @@ export function Contact() {
     resolver: zodResolver(contactSchema),
   });
 
+  const notifyValidationError = (
+    errors: FieldErrors<ContactFormData>
+  ): void => {
+    const message =
+      errors.fullName?.message ||
+      errors.email?.message ||
+      errors.message?.message ||
+      errors.subject?.message;
+    if (message) {
+      toast.error(message.toString());
+    }
+  };
+
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
     try {
+      const payload = {
+        fullName: data.fullName,
+        email: data.email,
+        message: data.message,
+        ...(data.subject ? { subject: data.subject } : {}),
+      };
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/contact`,
         {
@@ -37,7 +79,7 @@ export function Contact() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -168,7 +210,8 @@ export function Contact() {
             transition={{ duration: 0.6 }}
           >
             <form
-              onSubmit={handleSubmit(onSubmit)}
+              noValidate
+              onSubmit={handleSubmit(onSubmit, notifyValidationError)}
               className="flex flex-col gap-6"
             >
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -181,12 +224,9 @@ export function Contact() {
                     className="flex h-12 w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border border-white/10 bg-white/5 p-3 text-base font-normal leading-normal text-white placeholder:text-text-dark-secondary focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/20"
                     placeholder="Nhập họ và tên của bạn"
                     type="text"
+                    maxLength={20}
+                    required
                   />
-                  {errors.fullName && (
-                    <p className="mt-1 text-sm text-red-400">
-                      {errors.fullName.message}
-                    </p>
-                  )}
                 </label>
                 <label className="flex flex-col w-full">
                   <p className="pb-2 text-base font-medium text-white">
@@ -197,12 +237,8 @@ export function Contact() {
                     className="flex h-12 w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border border-white/10 bg-white/5 p-3 text-base font-normal leading-normal text-white placeholder:text-text-dark-secondary focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/20"
                     placeholder="Nhập địa chỉ email của bạn"
                     type="email"
+                    required
                   />
-                  {errors.email && (
-                    <p className="mt-1 text-sm text-red-400">
-                      {errors.email.message}
-                    </p>
-                  )}
                 </label>
               </div>
               <label className="flex flex-col w-full">
@@ -212,12 +248,8 @@ export function Contact() {
                   className="flex h-12 w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border border-white/10 bg-white/5 p-3 text-base font-normal leading-normal text-white placeholder:text-text-dark-secondary focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/20"
                   placeholder="Đây là về điều gì?"
                   type="text"
+                  maxLength={100}
                 />
-                {errors.subject && (
-                  <p className="mt-1 text-sm text-red-400">
-                    {errors.subject.message}
-                  </p>
-                )}
               </label>
               <label className="flex flex-col w-full">
                 <p className="pb-2 text-base font-medium text-white">
@@ -228,12 +260,9 @@ export function Contact() {
                   className="flex w-full min-w-0 flex-1 resize-y overflow-hidden rounded-lg border border-white/10 bg-white/5 p-3 text-base font-normal leading-normal text-white placeholder:text-text-dark-secondary focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/20"
                   placeholder="Viết tin nhắn của bạn ở đây..."
                   rows={5}
+                  maxLength={500}
+                  required
                 />
-                {errors.message && (
-                  <p className="mt-1 text-sm text-red-400">
-                    {errors.message.message}
-                  </p>
-                )}
               </label>
               <button
                 type="submit"

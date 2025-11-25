@@ -35,11 +35,16 @@ export class ContactService {
       return savedContact;
     }
 
+    const subjectText =
+      createContactDto.subject && createContactDto.subject.trim().length > 0
+        ? createContactDto.subject
+        : 'Không có chủ đề';
+
     try {
       await this.resend.emails.send({
         from: fromEmail,
         to: toEmail,
-        subject: `Thông Báo Mới Từ Form Liên Hệ Portfolio của Tan Sanh: ${createContactDto.subject}`,
+        subject: `Thông Báo Mới Từ Form Liên Hệ Portfolio của Tan Sanh: ${subjectText}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
             <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -47,7 +52,7 @@ export class ContactService {
               <div style="background-color: #f9f9f9; padding: 20px; border-radius: 4px; margin: 20px 0;">
                 <p style="margin: 10px 0;"><strong style="color: #555;">Họ và Tên:</strong> <span style="color: #333;">${createContactDto.fullName}</span></p>
                 <p style="margin: 10px 0;"><strong style="color: #555;">Email:</strong> <a href="mailto:${createContactDto.email}" style="color: #007bff; text-decoration: none;">${createContactDto.email}</a></p>
-                <p style="margin: 10px 0;"><strong style="color: #555;">Chủ Đề:</strong> <span style="color: #333;">${createContactDto.subject}</span></p>
+                <p style="margin: 10px 0;"><strong style="color: #555;">Chủ Đề:</strong> <span style="color: #333;">${subjectText}</span></p>
               </div>
               <div style="margin: 20px 0;">
                 <p style="margin: 10px 0;"><strong style="color: #555;">Tin Nhắn:</strong></p>
