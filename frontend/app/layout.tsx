@@ -3,6 +3,7 @@ import "./globals.css";
 import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { Toaster } from "react-hot-toast";
+import { FallingEffects } from "@/components/FallingEffects";
 import { inter } from "./fonts";
 
 export const metadata: Metadata = {
@@ -57,6 +58,13 @@ export default function RootLayout({
       >
         <AuthProvider>
           <SmoothScrollProvider>
+            <FallingEffects type="stars" color="#22d3ee" intensity="low" />
+            {/* <FallingEffects type="snow" color="#22d3ee" intensity="low" /> */}
+            {/* <FallingEffects type="flowers" color="#22d3ee" intensity="low" /> */}
+            {/* <FallingEffects type="rain" color="#22d3ee" intensity="low" /> */}
+            {/* <FallingEffects type="leaves" color="#22d3ee" intensity="low" /> */}
+            {/* <FallingEffects type="bubbles" color="#22d3ee" intensity="low" /> */}
+            {/* <FallingEffects type="confetti" color="#22d3ee" intensity="low" /> */}
             {children}
             <Toaster
               position="top-right"
