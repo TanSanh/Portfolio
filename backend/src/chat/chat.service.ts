@@ -24,6 +24,7 @@ export class ChatService {
       fullName: dto.fullName,
       phone: dto.phone,
       email: dto.email,
+      isRead: true,
     });
 
     await welcomeMessage.save();
@@ -32,7 +33,10 @@ export class ChatService {
   }
 
   async createMessage(dto: CreateMessageDto): Promise<MessageDocument> {
-    const message = new this.messageModel(dto);
+    const message = new this.messageModel({
+      ...dto,
+      isRead: dto.sender === 'admin',
+    });
     return message.save();
   }
 
@@ -54,7 +58,11 @@ export class ChatService {
             messageCount: { $sum: 1 },
             unreadCount: {
               $sum: {
-                $cond: [{ $eq: ['$isRead', false] }, 1, 0],
+                $cond: [
+                  { $and: [{ $eq: ['$sender', 'user'] }, { $eq: ['$isRead', false] }] },
+                  1,
+                  0,
+                ],
               },
             },
           },
@@ -71,6 +79,23 @@ export class ChatService {
             as: 'lastMessageData',
           },
         },
+        {
+          $lookup: {
+            from: 'messages',
+            let: { convId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$conversationId', '$$convId'] },
+                  fullName: { $exists: true, $ne: null },
+                },
+              },
+              { $sort: { createdAt: -1 } },
+              { $limit: 1 },
+            ],
+            as: 'contactInfo',
+          },
+        },
         { $sort: { 'lastMessage.createdAt': -1 } },
       ])
       .exec();
@@ -80,9 +105,18 @@ export class ChatService {
       lastMessage: conv.lastMessageData[0] || conv.lastMessage,
       messageCount: conv.messageCount,
       unreadCount: conv.unreadCount,
-      fullName: conv.lastMessage?.fullName,
-      phone: conv.lastMessage?.phone,
-      email: conv.lastMessage?.email,
+      fullName:
+        conv.contactInfo?.[0]?.fullName ||
+        conv.lastMessage?.fullName ||
+        conv.lastMessageData?.[0]?.fullName,
+      phone:
+        conv.contactInfo?.[0]?.phone ||
+        conv.lastMessage?.phone ||
+        conv.lastMessageData?.[0]?.phone,
+      email:
+        conv.contactInfo?.[0]?.email ||
+        conv.lastMessage?.email ||
+        conv.lastMessageData?.[0]?.email,
     }));
   }
 

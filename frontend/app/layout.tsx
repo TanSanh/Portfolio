@@ -4,7 +4,7 @@ import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvide
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { Toaster } from "react-hot-toast";
 import { FallingEffects } from "@/components/FallingEffects";
-import { ChatWidget } from "@/components/ChatWidget";
+import { ChatWidgetPortal } from "@/components/ChatWidgetPortal";
 import { inter } from "./fonts";
 
 export const metadata: Metadata = {
@@ -67,7 +67,7 @@ export default function RootLayout({
             {/* <FallingEffects type="bubbles" color="#22d3ee" intensity="low" /> */}
             {/* <FallingEffects type="confetti" color="#22d3ee" intensity="low" /> */}
             {children}
-            <ChatWidget />
+            <ChatWidgetPortal />
             <Toaster
               position="top-right"
               toastOptions={{

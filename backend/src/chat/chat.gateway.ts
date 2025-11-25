@@ -73,5 +73,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     await this.chatService.markAsRead(data.conversationId);
     this.server.to(data.conversationId).emit('messages_read', data.conversationId);
   }
+
+  @SubscribeMessage('typing')
+  handleTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    data: { conversationId: string; sender: 'user' | 'admin'; isTyping: boolean },
+  ) {
+    client.to(data.conversationId).emit('typing_status', data);
+  }
 }
 

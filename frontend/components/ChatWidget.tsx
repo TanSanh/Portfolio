@@ -13,6 +13,7 @@ interface Message {
   timestamp?: Date;
   createdAt?: Date;
   conversationId?: string;
+  isRead?: boolean;
 }
 
 export function ChatWidget() {
@@ -30,6 +31,9 @@ export function ChatWidget() {
   const [isConnected, setIsConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isAdminTyping, setIsAdminTyping] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -38,6 +42,39 @@ export function ChatWidget() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
+
+  const emitTypingStatus = (isTyping: boolean) => {
+    if (!conversationIdRef.current || !socket) return;
+    socket.emit("typing", {
+      conversationId: conversationIdRef.current,
+      sender: "user",
+      isTyping,
+    });
+  };
+
+  const stopTyping = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    emitTypingStatus(false);
+  };
+
+  const scheduleTypingStatus = () => {
+    if (!conversationIdRef.current || !socket) return;
+    emitTypingStatus(true);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    typingTimeoutRef.current = setTimeout(() => {
+      emitTypingStatus(false);
+      typingTimeoutRef.current = null;
+    }, 2000);
+  };
 
   // Khởi tạo Socket connection
   useEffect(() => {
@@ -84,6 +121,7 @@ export function ChatWidget() {
           timestamp: message.createdAt
             ? new Date(message.createdAt)
             : message.timestamp || new Date(),
+          isRead: message.isRead,
         };
 
         if (existingIndex !== -1) {
@@ -109,6 +147,7 @@ export function ChatWidget() {
             timestamp: msg.createdAt
               ? new Date(msg.createdAt)
               : msg.timestamp || new Date(),
+            isRead: msg.isRead,
           });
         }
       });
@@ -124,6 +163,43 @@ export function ChatWidget() {
       }
     };
   }, [isOpen, isStarted]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleMessagesRead = (conversationId: string) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.conversationId === conversationId && msg.sender === "user"
+            ? { ...msg, isRead: true }
+            : msg
+        )
+      );
+    };
+    const handleTypingStatus = (data: {
+      conversationId: string;
+      sender: "user" | "admin";
+      isTyping: boolean;
+    }) => {
+      if (
+        data.sender === "admin" &&
+        data.conversationId === conversationIdRef.current
+      ) {
+        setIsAdminTyping(data.isTyping);
+      }
+    };
+    socket.on("messages_read", handleMessagesRead);
+    socket.on("typing_status", handleTypingStatus);
+    return () => {
+      socket.off("messages_read", handleMessagesRead);
+      socket.off("typing_status", handleTypingStatus);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    return () => {
+      stopTyping();
+    };
+  }, []);
 
   // Join conversation khi có conversationId
   useEffect(() => {
@@ -206,9 +282,11 @@ export function ChatWidget() {
       sender: "user",
       timestamp: new Date(),
       conversationId,
+      isRead: false,
     };
     setMessages((prev) => [...prev, tempMessage]);
     setInputMessage("");
+    stopTyping();
 
     // Gửi message qua socket
     socket.emit("send_message", messageData, (response: any) => {
@@ -238,6 +316,7 @@ export function ChatWidget() {
               timestamp: response.createdAt
                 ? new Date(response.createdAt)
                 : new Date(),
+              isRead: response.isRead,
             },
           ];
         });
@@ -258,9 +337,19 @@ export function ChatWidget() {
     setMessages([]);
     setConversationId(null);
     setFormData({ fullName: "", phone: "", email: "" });
+    stopTyping();
     if (socket && conversationId) {
       socket.emit("leave_conversation", { conversationId });
     }
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputMessage(value);
+    if (!value.trim()) {
+      stopTyping();
+      return;
+    }
+    scheduleTypingStatus();
   };
 
   const formatMessage = (message: Message, index?: number): Message => {
@@ -278,34 +367,21 @@ export function ChatWidget() {
         ? new Date(message.createdAt)
         : message.timestamp || new Date(),
       conversationId: message.conversationId,
+      isRead: message.isRead,
     };
   };
 
   return (
     <>
       {/* Floating Chat Button */}
-      <motion.button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center group"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        aria-label="Mở chat"
-      >
-        {isOpen ? (
-          <svg
-            className="w-6 h-6 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        ) : (
+      {!isOpen && (
+        <motion.button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center group"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          aria-label="Mở chat"
+        >
           <svg
             className="w-6 h-6 text-white"
             fill="none"
@@ -319,12 +395,12 @@ export function ChatWidget() {
               d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
             />
           </svg>
-        )}
 
-        {isConnected && (
-          <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-        )}
-      </motion.button>
+          {isConnected && (
+            <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+          )}
+        </motion.button>
+      )}
 
       {/* Chat Widget */}
       <AnimatePresence>
@@ -480,7 +556,10 @@ export function ChatWidget() {
               ) : (
                 /* Chat Messages */
                 <>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div
+                    className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 custom-scrollbar"
+                    data-lenis-prevent
+                  >
                     {messages.map((message, index) => {
                       const formatted = formatMessage(message, index);
                       // Đảm bảo key unique: ưu tiên _id, sau đó id, cuối cùng là index
@@ -504,26 +583,42 @@ export function ChatWidget() {
                                 : "bg-background-dark-secondary text-text-dark-primary border border-white/10"
                             }`}
                           >
-                            <p className="text-sm">{formatted.text}</p>
-                            <p
-                              className={`text-xs mt-1 ${
+                            <p className="text-sm break-words whitespace-pre-wrap">
+                              {formatted.text}
+                            </p>
+                            <div
+                              className={`flex items-center gap-2 mt-1 ${
                                 formatted.sender === "user"
-                                  ? "text-white/70"
-                                  : "text-text-dark-secondary"
+                                  ? "justify-between"
+                                  : "justify-start"
                               }`}
                             >
-                              {formatted.timestamp?.toLocaleTimeString(
-                                "vi-VN",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              ) ||
-                                new Date().toLocaleTimeString("vi-VN", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                            </p>
+                              <p
+                                className={`text-xs ${
+                                  formatted.sender === "user"
+                                    ? "text-white/70"
+                                    : "text-text-dark-secondary"
+                                }`}
+                              >
+                                {formatted.timestamp?.toLocaleTimeString(
+                                  "vi-VN",
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                ) ||
+                                  new Date().toLocaleTimeString("vi-VN", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                              </p>
+                              {formatted.sender === "user" &&
+                                formatted.isRead && (
+                                  <span className="text-[10px] uppercase tracking-wide text-white/90">
+                                    Đã xem
+                                  </span>
+                                )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -532,16 +627,21 @@ export function ChatWidget() {
                   </div>
 
                   {/* Input Area */}
+                  {isAdminTyping && (
+                    <div className="px-4 pb-1 text-[11px] text-text-dark-secondary">
+                      Đang soạn tin...
+                    </div>
+                  )}
                   <form
                     onSubmit={handleSendMessage}
-                    className="border-t border-white/10 p-4 bg-background-dark-secondary"
+                    className="border-t border-white/10 p-4 bg-background-dark-secondary relative"
                   >
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 relative">
                       <input
                         ref={inputRef}
                         type="text"
                         value={inputMessage}
-                        onChange={(e) => setInputMessage(e.target.value)}
+                        onChange={(e) => handleInputChange(e.target.value)}
                         placeholder="Nhập tin nhắn..."
                         className="flex-1 px-4 py-2 bg-background-dark border border-white/10 rounded-lg text-text-dark-primary placeholder:text-text-dark-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
@@ -566,13 +666,6 @@ export function ChatWidget() {
                         </svg>
                       </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleReset}
-                      className="mt-2 text-xs text-text-dark-secondary hover:text-text-dark-primary transition-colors"
-                    >
-                      Bắt đầu lại
-                    </button>
                   </form>
                 </>
               )}
