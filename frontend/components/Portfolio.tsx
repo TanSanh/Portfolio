@@ -81,7 +81,127 @@ export function Portfolio() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <div className="w-full max-w-md aspect-square bg-gradient-to-br from-pink-500 via-purple-500 to-teal-500 rounded-xl" />
+            <div className="relative w-full max-w-md aspect-square perspective-1000 group sphere-container">
+              <div className="absolute inset-0 animate-sphere-3d">
+                <div
+                  className="w-full h-full rounded-full bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 shadow-2xl shadow-cyan-500/50 relative overflow-hidden"
+                  style={{
+                    transformStyle: "preserve-3d",
+                  }}
+                >
+                  {/* Lưới wireframe công nghệ */}
+                  <svg
+                    className="absolute inset-0 w-full h-full animate-spin-slow"
+                    viewBox="0 0 200 200"
+                    style={{ animationDuration: "20s" }}
+                  >
+                    {/* Kinh tuyến (meridians) */}
+                    {[...Array(12)].map((_, i) => {
+                      const angle = i * 30;
+                      const x1 = 100 + 100 * Math.cos((angle * Math.PI) / 180);
+                      const y1 = 100 + 100 * Math.sin((angle * Math.PI) / 180);
+                      const x2 = 100 - 100 * Math.cos((angle * Math.PI) / 180);
+                      const y2 = 100 - 100 * Math.sin((angle * Math.PI) / 180);
+                      return (
+                        <line
+                          key={`meridian-${i}`}
+                          x1={x1}
+                          y1={y1}
+                          x2={x2}
+                          y2={y2}
+                          stroke="rgba(34, 211, 238, 0.5)"
+                          strokeWidth="0.8"
+                          className="animate-pulse"
+                          style={{
+                            filter:
+                              "drop-shadow(0 0 2px rgba(34, 211, 238, 0.8))",
+                            animationDelay: `${i * 0.1}s`,
+                          }}
+                        />
+                      );
+                    })}
+                    {/* Vĩ tuyến (parallels) */}
+                    {[...Array(6)].map((_, i) => {
+                      const radius = 20 + i * 30;
+                      return (
+                        <circle
+                          key={`parallel-${i}`}
+                          cx="100"
+                          cy="100"
+                          r={radius}
+                          fill="none"
+                          stroke="rgba(34, 211, 238, 0.4)"
+                          strokeWidth="0.8"
+                          className="animate-pulse"
+                          style={{
+                            animationDelay: `${i * 0.2}s`,
+                            filter:
+                              "drop-shadow(0 0 2px rgba(34, 211, 238, 0.6))",
+                          }}
+                        />
+                      );
+                    })}
+                    {/* Điểm nút giao nhau */}
+                    {[...Array(12)].map((_, i) => {
+                      const angle = i * 30;
+                      const x = 100 + 80 * Math.cos((angle * Math.PI) / 180);
+                      const y = 100 + 80 * Math.sin((angle * Math.PI) / 180);
+                      return (
+                        <circle
+                          key={`node-${i}`}
+                          cx={x}
+                          cy={y}
+                          r="2"
+                          fill="rgba(34, 211, 238, 0.9)"
+                          className="animate-pulse"
+                          style={{
+                            animationDelay: `${i * 0.15}s`,
+                            filter:
+                              "drop-shadow(0 0 4px rgba(34, 211, 238, 1))",
+                          }}
+                        />
+                      );
+                    })}
+                  </svg>
+
+                  {/* Các điểm sáng công nghệ (nodes) */}
+                  {[...Array(8)].map((_, i) => {
+                    const angle = i * 45 * (Math.PI / 180);
+                    const radius = 40;
+                    const x = 50 + radius * Math.cos(angle);
+                    const y = 50 + radius * Math.sin(angle);
+                    return (
+                      <div
+                        key={`node-${i}`}
+                        className="absolute w-2 h-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/80 animate-pulse"
+                        style={{
+                          left: `${x}%`,
+                          top: `${y}%`,
+                          animationDelay: `${i * 0.15}s`,
+                          boxShadow:
+                            "0 0 10px rgba(34, 211, 238, 0.8), 0 0 20px rgba(34, 211, 238, 0.6)",
+                        }}
+                      />
+                    );
+                  })}
+
+                  {/* Điểm sáng chính - glow effect */}
+                  <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-cyan-400/40 blur-3xl animate-pulse" />
+                  <div className="absolute bottom-1/3 right-1/4 w-24 h-24 rounded-full bg-blue-400/30 blur-2xl" />
+
+                  {/* Vòng tròn công nghệ để tạo độ sâu */}
+                  <div className="absolute inset-4 rounded-full border border-cyan-400/30 shadow-[0_0_20px_rgba(34,211,238,0.3)]" />
+                  <div className="absolute inset-8 rounded-full border border-cyan-400/20" />
+                  <div className="absolute inset-12 rounded-full border border-cyan-400/10" />
+
+                  {/* Hiệu ứng ánh sáng phản chiếu */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-cyan-400/20 via-transparent to-transparent" />
+
+                  {/* Hiệu ứng scan line */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-b from-transparent via-cyan-400/10 to-transparent animate-scan" />
+                </div>
+              </div>
+            </div>
           </motion.div>
           <motion.div
             className="flex-1 flex flex-col gap-6"
