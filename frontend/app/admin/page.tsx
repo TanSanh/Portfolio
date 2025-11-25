@@ -189,130 +189,161 @@ function AdminPageContent() {
       actions={headerActions}
     >
       {showForm && (
-        <div className="bg-white/5 rounded-2xl p-6 mb-8 border border-white/10 shadow-2xl shadow-black/40">
-          <h2 className="text-xl font-bold mb-4">
-            {editingProject ? "Chỉnh Sửa Dự Án" : "Thêm Dự Án Mới"}
-          </h2>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Tiêu Đề *
-                </label>
-                <input
-                  {...register("title")}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70"
-                  placeholder="Nhập tiêu đề dự án"
-                />
-                {errors.title && (
-                  <p className="mt-1 text-sm text-red-400">
-                    {errors.title.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Danh Mục *
-                </label>
-                <input
-                  {...register("category")}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70"
-                  placeholder="Ví dụ: API Development"
-                />
-                {errors.category && (
-                  <p className="mt-1 text-sm text-red-400">
-                    {errors.category.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                URL Hình Ảnh *
-              </label>
-              <input
-                {...register("image")}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70"
-                placeholder="https://example.com/image.jpg"
-              />
-              {errors.image && (
-                <p className="mt-1 text-sm text-red-400">
-                  {errors.image.message}
-                </p>
-              )}
-              {watch("image") && (
-                <div className="mt-4">
-                  <p className="text-sm text-white/60 mb-2">Preview:</p>
-                  <div className="w-full h-48 rounded-lg overflow-hidden border border-white/10 bg-black/20">
-                    <img
-                      src={watch("image")}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Mô Tả *</label>
-              <textarea
-                {...register("description")}
-                rows={4}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70 resize-none"
-                placeholder="Nhập mô tả dự án"
-              />
-              {errors.description && (
-                <p className="mt-1 text-sm text-red-400">
-                  {errors.description.message}
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Thứ Tự</label>
-                <input
-                  type="number"
-                  {...register("order", { valueAsNumber: true })}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70"
-                  placeholder="0"
-                />
-              </div>
-
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    {...register("isActive")}
-                    className="w-5 h-5 rounded bg-white/5 border-white/10 text-primary focus:ring-primary"
-                  />
-                  <span>Hiển thị trên website</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={handleCancel}
+          />
+          <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-[#0d1426] rounded-2xl p-6 border border-white/10 shadow-2xl shadow-black/70">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">
+                {editingProject ? "Chỉnh Sửa Dự Án" : "Thêm Dự Án Mới"}
+              </h2>
               <button
-                type="submit"
-                className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                {editingProject ? "Cập Nhật" : "Tạo Mới"}
-              </button>
-              <button
-                type="button"
                 onClick={handleCancel}
-                className="px-6 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+                className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                aria-label="Đóng"
               >
-                Hủy
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
             </div>
-          </form>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Tiêu Đề *
+                  </label>
+                  <input
+                    {...register("title")}
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70"
+                    placeholder="Nhập tiêu đề dự án"
+                  />
+                  {errors.title && (
+                    <p className="mt-1 text-sm text-red-400">
+                      {errors.title.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Danh Mục *
+                  </label>
+                  <input
+                    {...register("category")}
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70"
+                    placeholder="Ví dụ: API Development"
+                  />
+                  {errors.category && (
+                    <p className="mt-1 text-sm text-red-400">
+                      {errors.category.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  URL Hình Ảnh *
+                </label>
+                <input
+                  {...register("image")}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70"
+                  placeholder="https://example.com/image.jpg"
+                />
+                {errors.image && (
+                  <p className="mt-1 text-sm text-red-400">
+                    {errors.image.message}
+                  </p>
+                )}
+                {watch("image") && (
+                  <div className="mt-4">
+                    <p className="text-sm text-white/60 mb-2">Preview:</p>
+                    <div className="w-full h-48 rounded-lg overflow-hidden border border-white/10 bg-black/20">
+                      <img
+                        src={watch("image")}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Mô Tả *
+                </label>
+                <textarea
+                  {...register("description")}
+                  rows={4}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70 resize-none"
+                  placeholder="Nhập mô tả dự án"
+                />
+                {errors.description && (
+                  <p className="mt-1 text-sm text-red-400">
+                    {errors.description.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Thứ Tự
+                  </label>
+                  <input
+                    type="number"
+                    {...register("order", { valueAsNumber: true })}
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register("isActive")}
+                      className="w-5 h-5 rounded bg-white/5 border-white/10 text-primary focus:ring-primary"
+                    />
+                    <span>Hiển thị trên website</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  {editingProject ? "Cập Nhật" : "Tạo Mới"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-6 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+                >
+                  Hủy
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

@@ -1,9 +1,9 @@
-import { Header } from "@/components/Header";
-import { Hero } from "@/components/Hero";
-import { Portfolio } from "@/components/Portfolio";
-import { Services } from "@/components/Services";
-import { Contact } from "@/components/Contact";
-import { Footer } from "@/components/Footer";
+import { Header } from "@/components/client/Header";
+import { Hero } from "@/components/client/Hero";
+import { Portfolio } from "@/components/client/Portfolio";
+import { Services } from "@/components/client/Services";
+import { Contact } from "@/components/client/Contact";
+import { Footer } from "@/components/client/Footer";
 
 export default function Home() {
   return (

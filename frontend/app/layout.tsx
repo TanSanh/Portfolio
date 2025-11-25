@@ -3,8 +3,8 @@ import "./globals.css";
 import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { Toaster } from "react-hot-toast";
-import { FallingEffects } from "@/components/FallingEffects";
-import { ChatWidgetPortal } from "@/components/ChatWidgetPortal";
+import { FallingEffects } from "@/components/client/FallingEffects";
+import { ChatWidgetPortal } from "@/components/client/ChatWidgetPortal";
 import { inter } from "./fonts";
 
 export const metadata: Metadata = {
