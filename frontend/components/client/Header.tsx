@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -21,10 +22,13 @@ export function Header() {
           <Link href="/" className="flex items-center gap-3 text-white">
             <div className="relative h-10 w-10 flex-shrink-0 rounded-full border border-white/15 bg-white/5 p-1">
               {!logoError ? (
-                <img
-                  src="/assets/logo.png"
-                  alt="Logo"
-                  className="h-full w-full rounded-full object-cover"
+                <Image
+                  src="/assets/logo.webp"
+                  alt="Portfolio Tan Sanh logo"
+                  fill
+                  sizes="40px"
+                  priority
+                  className="rounded-full object-cover"
                   onError={() => {
                     setLogoError(true);
                   }}

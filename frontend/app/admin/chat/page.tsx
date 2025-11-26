@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import toast from "react-hot-toast";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
+import Image from "next/image";
 
 interface Message {
   _id?: string;
@@ -121,6 +122,66 @@ export default function AdminChatPage() {
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const fetchConversations = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${apiUrl}/chat/conversations`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setConversations(data);
+      }
+    } catch (error) {
+      // Lỗi khi tải conversations
+    }
+  }, [token, apiUrl]);
+
+  const fetchMessages = useCallback(
+    async (conversationId: string) => {
+      if (!token) return;
+      try {
+        const response = await fetch(
+          `${apiUrl}/chat/messages/${conversationId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setMessages(
+            data.map((msg: Message) => ({
+              ...msg,
+              createdAt: msg.createdAt ? new Date(msg.createdAt) : undefined,
+            }))
+          );
+        }
+      } catch (error) {
+        // Lỗi khi tải messages
+      }
+    },
+    [token, apiUrl]
+  );
+
+  const markAsRead = useCallback((conversationId: string) => {
+    const currentSocket = socketRef.current;
+    if (!currentSocket) return;
+    setConversations((prev) =>
+      prev.map((conv) =>
+        conv.conversationId === conversationId
+          ? { ...conv, unreadCount: 0 }
+          : conv
+      )
+    );
+    currentSocket.emit("mark_read", { conversationId });
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -152,18 +213,21 @@ export default function AdminChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const emitTypingStatus = (isTyping: boolean, conversationId?: string) => {
-    const activeConversation =
-      conversationId || selectedConversationRef.current;
-    if (!activeConversation) return;
-    socketRef.current?.emit("typing", {
-      conversationId: activeConversation,
-      sender: "admin",
-      isTyping,
-    });
-  };
+  const emitTypingStatus = useCallback(
+    (isTyping: boolean, conversationId?: string) => {
+      const activeConversation =
+        conversationId || selectedConversationRef.current;
+      if (!activeConversation) return;
+      socketRef.current?.emit("typing", {
+        conversationId: activeConversation,
+        sender: "admin",
+        isTyping,
+      });
+    },
+    []
+  );
 
-  const scheduleTypingStatus = () => {
+  const scheduleTypingStatus = useCallback(() => {
     if (!selectedConversationRef.current) return;
     emitTypingStatus(true);
     if (typingTimeoutRef.current) {
@@ -173,15 +237,15 @@ export default function AdminChatPage() {
       emitTypingStatus(false);
       typingTimeoutRef.current = null;
     }, 2000);
-  };
+  }, [emitTypingStatus]);
 
-  const stopTyping = () => {
+  const stopTyping = useCallback(() => {
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = null;
     }
     emitTypingStatus(false);
-  };
+  }, [emitTypingStatus]);
 
   const handleEmojiClick = (emojiData: EmojiClickData) => {
     setInputMessage((prev) => prev + emojiData.emoji);
@@ -215,7 +279,6 @@ export default function AdminChatPage() {
     if (!selectedFile?.file) return null;
     setUploadingFile(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
       const baseUrl = apiUrl.endsWith("/api") ? apiUrl : `${apiUrl}/api`;
       const formData = new FormData();
       formData.append("file", selectedFile.file);
@@ -368,7 +431,7 @@ export default function AdminChatPage() {
       socketRef.current = null;
       newSocket.close();
     };
-  }, [token, apiUrl, socketUrl]);
+  }, [token, apiUrl, socketUrl, fetchConversations, markAsRead]);
 
   // Join conversation khi chọn
   useEffect(() => {
@@ -382,7 +445,7 @@ export default function AdminChatPage() {
     }
     setIsMenuOpen(false);
     setShowInfoModal(false);
-  }, [socket, selectedConversation]);
+  }, [socket, selectedConversation, fetchMessages, markAsRead]);
 
   useEffect(() => {
     return () => {
@@ -390,70 +453,13 @@ export default function AdminChatPage() {
         emitTypingStatus(false, selectedConversation);
       }
     };
-  }, [selectedConversation]);
+  }, [selectedConversation, emitTypingStatus]);
 
   useEffect(() => {
     return () => {
       stopTyping();
     };
-  }, []);
-
-  const fetchConversations = async () => {
-    if (!token) return;
-    try {
-      const response = await fetch(`${apiUrl}/chat/conversations`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setConversations(data);
-      }
-    } catch (error) {
-      // Lỗi khi tải conversations
-    }
-  };
-
-  const fetchMessages = async (conversationId: string) => {
-    if (!token) return;
-    try {
-      const response = await fetch(
-        `${apiUrl}/chat/messages/${conversationId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(
-          data.map((msg: Message) => ({
-            ...msg,
-            createdAt: msg.createdAt ? new Date(msg.createdAt) : undefined,
-          }))
-        );
-      }
-    } catch (error) {
-      // Lỗi khi tải messages
-    }
-  };
-
-  const markAsRead = (conversationId: string) => {
-    const currentSocket = socketRef.current;
-    if (!currentSocket) return;
-    setConversations((prev) =>
-      prev.map((conv) =>
-        conv.conversationId === conversationId
-          ? { ...conv, unreadCount: 0 }
-          : conv
-      )
-    );
-    currentSocket.emit("mark_read", { conversationId });
-  };
+  }, [stopTyping]);
 
   const handleSelectConversation = (conversationId: string) => {
     stopTyping();
@@ -570,7 +576,7 @@ export default function AdminChatPage() {
     fetchConversations();
     const interval = setInterval(fetchConversations, 5000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [token, fetchConversations]);
 
   const handleViewInfo = () => {
     setShowInfoModal(true);
@@ -778,10 +784,13 @@ export default function AdminChatPage() {
                         }`}
                       >
                         <div className="flex flex-col gap-2 max-w-[70%]">
-                          {hasFile && imageFile && (
-                            <img
+                          {hasFile && imageFile && message.fileUrl && (
+                            <Image
                               src={message.fileUrl}
                               alt={displayFileName}
+                              width={800}
+                              height={800}
+                              sizes="(max-width: 1024px) 80vw, 400px"
                               className="rounded-2xl max-h-80 w-full object-contain border border-white/10 bg-black/20 cursor-pointer"
                               onClick={() =>
                                 openFileInNewTab(
@@ -789,7 +798,7 @@ export default function AdminChatPage() {
                                   message.fileName
                                 )
                               }
-                              loading="lazy"
+                              unoptimized
                             />
                           )}
 
@@ -880,10 +889,13 @@ export default function AdminChatPage() {
                   <div className="px-6 pb-2">
                     <div className="flex items-center gap-3 p-3 rounded-2xl border border-white/10 bg-white/5">
                       {selectedFile.fileType === "image" ? (
-                        <img
+                        <Image
                           src={selectedFile.previewUrl}
                           alt={selectedFile.fileName}
+                          width={48}
+                          height={48}
                           className="w-12 h-12 rounded-xl object-cover border border-white/10"
+                          unoptimized
                         />
                       ) : (
                         <span className="p-2 rounded-xl bg-white/10 text-white/70">

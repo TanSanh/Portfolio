@@ -329,6 +329,8 @@ export function Portfolio() {
             onClick={handlePrev}
             disabled={currentPage === 0}
             className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-white/5 text-text-dark-secondary hover:bg-primary/20 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Xem nhóm dự án trước"
+            title="Dự án trước"
           >
             <svg
               className="w-6 h-6"
@@ -348,6 +350,8 @@ export function Portfolio() {
             onClick={handleNext}
             disabled={currentPage >= totalPages - 1}
             className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-white/5 text-text-dark-secondary hover:bg-primary/20 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Xem nhóm dự án tiếp theo"
+            title="Dự án tiếp theo"
           >
             <svg
               className="w-6 h-6"

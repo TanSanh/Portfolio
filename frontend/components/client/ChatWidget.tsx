@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
@@ -25,8 +27,12 @@ const NAME_REGEX = /^[a-zA-ZÀ-ỹ\s]{2,20}$/;
 const PHONE_REGEX = /^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/;
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
 
-export function ChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+interface ChatWidgetProps {
+  defaultOpen?: boolean;
+}
+
+export function ChatWidget({ defaultOpen = false }: ChatWidgetProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isStarted, setIsStarted] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");

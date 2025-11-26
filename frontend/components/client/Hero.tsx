@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 
 export function Hero() {
   const containerVariants = {
@@ -98,10 +99,17 @@ export function Hero() {
             className="flex items-center justify-center lg:col-span-2"
             variants={itemVariants}
           >
-            <div
-              className="aspect-square w-full max-w-sm rounded-full bg-cover bg-center bg-no-repeat overflow-hidden ring-4 ring-primary/20 shadow-2xl 2xl:max-w-lg"
-              style={{ backgroundImage: "url(/assets/avatar.jpg)" }}
-            />
+            <div className="relative aspect-square w-full max-w-sm overflow-hidden rounded-full ring-4 ring-primary/20 shadow-2xl 2xl:max-w-lg">
+              <Image
+                src="/assets/avatar.webp"
+                alt="Avatar Tan Sanh"
+                fill
+                priority
+                sizes="(min-width: 1024px) 24rem, 60vw"
+                className="object-cover"
+                placeholder="empty"
+              />
+            </div>
           </motion.div>
         </motion.div>
 
