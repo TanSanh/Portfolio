@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { ConfirmModal } from "@/components/admin/ConfirmModal";
 
 interface AdminShellProps {
   title: string;
@@ -61,6 +62,7 @@ export function AdminShell({
 }: AdminShellProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#030712] text-white flex">
@@ -95,7 +97,7 @@ export function AdminShell({
           </div>
           <div className="mt-auto pt-6">
             <button
-              onClick={logout}
+              onClick={() => setShowLogoutConfirm(true)}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-300 border border-red-500/20 hover:bg-red-500/10 transition-all"
             >
               <svg
@@ -128,6 +130,19 @@ export function AdminShell({
         </header>
         <main className="flex-1 overflow-y-auto p-6 lg:p-10">{children}</main>
       </div>
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="Đăng xuất"
+        message="Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?"
+        confirmText="Đăng xuất"
+        cancelText="Hủy"
+        variant="danger"
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          logout();
+        }}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </div>
   );
 }

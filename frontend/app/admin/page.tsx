@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ConfirmModal } from "@/components/admin/ConfirmModal";
 
 interface Project {
   _id?: string;
@@ -35,6 +36,8 @@ function AdminPageContent() {
   const [loading, setLoading] = useState(true);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const { token, logout } = useAuth();
 
   const {
@@ -126,14 +129,16 @@ function AdminPageContent() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa dự án này?")) {
-      return;
-    }
+  const handleDelete = (id: string) => {
+    setProjectToDelete(id);
+    setShowDeleteConfirm(true);
+  };
 
+  const confirmDeleteProject = async () => {
+    if (!projectToDelete) return;
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/projects/${id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/projects/${projectToDelete}`,
         {
           method: "DELETE",
           headers: {
@@ -148,8 +153,12 @@ function AdminPageContent() {
 
       toast.success("Xóa dự án thành công!");
       fetchProjects();
+      setShowDeleteConfirm(false);
+      setProjectToDelete(null);
     } catch (error) {
       toast.error("Lỗi khi xóa dự án");
+      setShowDeleteConfirm(false);
+      setProjectToDelete(null);
     }
   };
 
@@ -431,6 +440,19 @@ function AdminPageContent() {
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Xóa dự án"
+        message="Bạn có chắc chắn muốn xóa dự án này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        variant="danger"
+        onConfirm={confirmDeleteProject}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setProjectToDelete(null);
+        }}
+      />
     </AdminShell>
   );
 }

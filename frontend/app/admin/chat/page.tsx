@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ConfirmModal } from "@/components/admin/ConfirmModal";
 
 interface Message {
   _id?: string;
@@ -44,6 +45,7 @@ export default function AdminChatPage() {
   const socketRef = useRef<Socket | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [typingStatus, setTypingStatus] = useState<Record<string, boolean>>({});
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -120,7 +122,7 @@ export default function AdminChatPage() {
 
     newSocket.on("new_message", (message: Message) => {
       const normalizedMessage = {
-            ...message,
+        ...message,
         createdAt: message.createdAt ? new Date(message.createdAt) : undefined,
       };
       const isActiveConversation =
@@ -370,12 +372,14 @@ export default function AdminChatPage() {
     setIsMenuOpen(false);
   };
 
-  const handleArchiveConversation = async () => {
+  const handleArchiveConversation = () => {
     if (!selectedConversation) return;
-    const confirmDelete = window.confirm(
-      "Bạn có chắc chắn muốn xóa cuộc trò chuyện này?"
-    );
-    if (!confirmDelete) return;
+    setShowDeleteConfirm(true);
+    setIsMenuOpen(false);
+  };
+
+  const confirmDeleteConversation = async () => {
+    if (!selectedConversation) return;
     try {
       await fetch(`${apiUrl}/chat/archive/${selectedConversation}`, {
         method: "POST",
@@ -390,7 +394,7 @@ export default function AdminChatPage() {
     } catch (error) {
       toast.error("Không thể xóa cuộc trò chuyện");
     } finally {
-      setIsMenuOpen(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -676,6 +680,16 @@ export default function AdminChatPage() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Xóa cuộc trò chuyện"
+        message="Bạn có chắc chắn muốn xóa cuộc trò chuyện này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        variant="danger"
+        onConfirm={confirmDeleteConversation}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </ProtectedRoute>
   );
 }
