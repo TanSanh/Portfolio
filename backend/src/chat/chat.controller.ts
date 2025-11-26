@@ -6,7 +6,12 @@ import {
   Param,
   UseGuards,
   Query,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { ChatService } from './chat.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { StartConversationDto } from './dto/start-conversation.dto';
@@ -52,5 +57,39 @@ export class ChatController {
     await this.chatService.archiveConversation(conversationId);
     return { success: true };
   }
-}
 
+  @Post('upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/chat',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `chat-${uniqueSuffix}${ext}`);
+        },
+      }),
+      limits: {
+        fileSize: 20 * 1024 * 1024, // 20MB
+      },
+    }),
+  )
+  uploadFile(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      return { error: 'Không có file được upload' };
+    }
+
+    const originalName = Buffer.from(file.originalname, 'latin1').toString(
+      'utf8',
+    );
+    const isImage = file.mimetype.startsWith('image/');
+    return {
+      url: `/api/uploads/chat/${file.filename}`,
+      filename: file.filename,
+      originalName,
+      fileType: isImage ? 'image' : 'file',
+      fileSize: file.size,
+    };
+  }
+}

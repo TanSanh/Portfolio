@@ -11,8 +11,8 @@ export class Message {
   @Prop({ required: true, enum: ['user', 'admin'] })
   sender: string;
 
-  @Prop({ required: true })
-  text: string;
+  @Prop({ required: false, default: '' })
+  text?: string;
 
   @Prop()
   fullName?: string;
@@ -28,6 +28,18 @@ export class Message {
 
   @Prop({ default: false })
   isArchived: boolean;
+
+  @Prop()
+  fileUrl?: string;
+
+  @Prop()
+  fileName?: string;
+
+  @Prop()
+  fileType?: string; // 'image', 'file', etc.
+
+  @Prop()
+  fileSize?: number;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);

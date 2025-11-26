@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
 import toast from "react-hot-toast";
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 
 interface Message {
   _id?: string;
@@ -14,6 +15,10 @@ interface Message {
   createdAt?: Date;
   conversationId?: string;
   isRead?: boolean;
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
 }
 
 const NAME_REGEX = /^[a-zA-ZÀ-ỹ\s]{2,20}$/;
@@ -38,6 +43,45 @@ export function ChatWidget() {
   const conversationIdRef = useRef<string | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isAdminTyping, setIsAdminTyping] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{
+    file: File;
+    previewUrl: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  const openFileInNewTab = (fileUrl?: string, fileName?: string) => {
+    if (!fileUrl) return;
+    const getExtension = (value?: string) => {
+      if (!value) return "";
+      const sanitized = value.split("?")[0];
+      const parts = sanitized.split(".");
+      return parts.length > 1 ? parts.pop()?.toLowerCase() ?? "" : "";
+    };
+
+    const extension =
+      getExtension(fileName) || getExtension(fileUrl.split("/").pop());
+    const officeFormats = ["doc", "docx", "ppt", "pptx", "xls", "xlsx"];
+    let targetUrl = fileUrl;
+
+    if (extension && officeFormats.includes(extension)) {
+      const absoluteUrl = fileUrl.startsWith("http")
+        ? fileUrl
+        : `${window.location.origin}${
+            fileUrl.startsWith("/") ? fileUrl : `/${fileUrl}`
+          }`;
+      targetUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(
+        absoluteUrl
+      )}`;
+    }
+
+    window.open(targetUrl, "_blank");
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -50,6 +94,81 @@ export function ChatWidget() {
   useEffect(() => {
     conversationIdRef.current = conversationId;
   }, [conversationId]);
+
+  // Khôi phục trạng thái từ localStorage khi component mount
+  useEffect(() => {
+    const savedConversationId = localStorage.getItem("chat_conversationId");
+    const savedFormData = localStorage.getItem("chat_formData");
+    const savedIsStarted = localStorage.getItem("chat_isStarted");
+
+    if (savedConversationId && savedFormData && savedIsStarted === "true") {
+      try {
+        const parsedFormData = JSON.parse(savedFormData);
+        setConversationId(savedConversationId);
+        setFormData(parsedFormData);
+        setIsStarted(true);
+
+        // Fetch lại messages
+        const fetchMessages = async () => {
+          try {
+            const apiUrl =
+              process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+            const response = await fetch(
+              `${apiUrl}/chat/messages/${savedConversationId}`
+            );
+            if (response.ok) {
+              const messages = await response.json();
+              setMessages(
+                messages.map((msg: Message) => ({
+                  ...msg,
+                  id: msg._id || msg.id || `msg-${Date.now()}`,
+                  timestamp: msg.createdAt
+                    ? new Date(msg.createdAt)
+                    : msg.timestamp || new Date(),
+                }))
+              );
+            }
+          } catch (error) {
+            console.error("Error fetching messages:", error);
+          }
+        };
+        fetchMessages();
+      } catch (error) {
+        console.error("Error restoring chat state:", error);
+        // Clear invalid data
+        localStorage.removeItem("chat_conversationId");
+        localStorage.removeItem("chat_formData");
+        localStorage.removeItem("chat_isStarted");
+      }
+    }
+  }, []);
+
+  // Lưu conversationId vào localStorage
+  useEffect(() => {
+    if (conversationId) {
+      localStorage.setItem("chat_conversationId", conversationId);
+    } else {
+      localStorage.removeItem("chat_conversationId");
+    }
+  }, [conversationId]);
+
+  // Lưu formData vào localStorage
+  useEffect(() => {
+    if (isStarted && formData.fullName) {
+      localStorage.setItem("chat_formData", JSON.stringify(formData));
+    } else {
+      localStorage.removeItem("chat_formData");
+    }
+  }, [formData, isStarted]);
+
+  // Lưu isStarted vào localStorage
+  useEffect(() => {
+    if (isStarted) {
+      localStorage.setItem("chat_isStarted", "true");
+    } else {
+      localStorage.removeItem("chat_isStarted");
+    }
+  }, [isStarted]);
 
   const emitTypingStatus = (isTyping: boolean) => {
     if (!conversationIdRef.current || !socket) return;
@@ -86,7 +205,7 @@ export function ChatWidget() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
     const socketUrl = apiUrl.replace("/api", ""); // Bỏ /api cho WebSocket
 
-    // Chỉ kết nối khi widget mở hoặc đã bắt đầu chat
+    // Kết nối khi widget mở hoặc đã bắt đầu chat (để nhận messages ngay cả khi widget đóng)
     if (!isOpen && !isStarted) return;
 
     const newSocket = io(socketUrl, {
@@ -122,10 +241,16 @@ export function ChatWidget() {
           ...message,
           id: messageId || `msg-${Date.now()}-${Math.random()}`,
           _id: message._id,
+          text: message.text || "",
           timestamp: message.createdAt
             ? new Date(message.createdAt)
             : message.timestamp || new Date(),
           isRead: message.isRead,
+          // Đảm bảo file info được copy
+          fileUrl: message.fileUrl,
+          fileName: message.fileName,
+          fileType: message.fileType,
+          fileSize: message.fileSize,
         };
 
         if (existingIndex !== -1) {
@@ -148,10 +273,16 @@ export function ChatWidget() {
             ...msg,
             id,
             _id: msg._id,
+            text: msg.text || "",
             timestamp: msg.createdAt
               ? new Date(msg.createdAt)
               : msg.timestamp || new Date(),
             isRead: msg.isRead,
+            // Đảm bảo file info được copy
+            fileUrl: msg.fileUrl,
+            fileName: msg.fileName,
+            fileType: msg.fileType,
+            fileSize: msg.fileSize,
           });
         }
       });
@@ -206,6 +337,26 @@ export function ChatWidget() {
     // stopTyping chỉ cần chạy khi unmount nên bỏ qua dependency warning
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Đóng emoji picker khi click bên ngoài
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showEmojiPicker]);
 
   // Join conversation khi có conversationId
   useEffect(() => {
@@ -278,12 +429,71 @@ export function ChatWidget() {
     }
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMessage.trim()) {
-      toast.error("Vui lòng nhập tin nhắn");
+  const handleFileSelect = (file: File) => {
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("File không được vượt quá 20MB");
       return;
     }
+
+    if (selectedFile?.previewUrl) {
+      URL.revokeObjectURL(selectedFile.previewUrl);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedFile({
+      file,
+      previewUrl,
+      fileName: file.name,
+      fileType: file.type?.startsWith("image") ? "image" : "file",
+      fileSize: file.size,
+    });
+  };
+
+  const uploadSelectedFile = async () => {
+    if (!selectedFile?.file) return null;
+    setUploadingFile(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const baseUrl = apiUrl.endsWith("/api") ? apiUrl : `${apiUrl}/api`;
+      const formData = new FormData();
+      formData.append("file", selectedFile.file);
+
+      const response = await fetch(`${baseUrl}/chat/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Không thể upload file");
+      }
+
+      const data = await response.json();
+      const fileUrl = data.url.startsWith("/api/")
+        ? `${apiUrl.replace("/api", "")}${data.url}`
+        : `${baseUrl.replace("/api", "")}${data.url}`;
+
+      return {
+        fileUrl,
+        fileName: data.originalName,
+        fileType: data.fileType,
+        fileSize: data.fileSize,
+      };
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setInputMessage((prev) => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!socket) {
       toast.error("Chưa kết nối đến server. Vui lòng thử lại.");
       return;
@@ -297,33 +507,69 @@ export function ChatWidget() {
       return;
     }
 
-    const messageText = inputMessage.trim();
-    const messageData = {
+    const messageText = inputMessage.trim() || "";
+    const messageData: any = {
       conversationId,
       sender: "user" as const,
-      text: messageText,
       fullName: formData.fullName,
       phone: formData.phone,
       email: formData.email,
     };
 
-    // Optimistic update - hiển thị message ngay lập tức
+    if (messageText) {
+      messageData.text = messageText;
+    }
+
+    if (!messageText && !selectedFile) {
+      toast.error("Vui lòng nhập tin nhắn hoặc chọn file");
+      return;
+    }
+
+    let uploadedFileData: {
+      fileUrl: string;
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+    } | null = null;
+
+    if (selectedFile) {
+      try {
+        uploadedFileData = await uploadSelectedFile();
+        if (!uploadedFileData) {
+          toast.error("Không thể upload file");
+          return;
+        }
+        Object.assign(messageData, uploadedFileData);
+      } catch (error) {
+        toast.error("Có lỗi xảy ra khi upload file");
+        return;
+      }
+    }
+
     const tempMessage: Message = {
       id: `temp-${Date.now()}`,
-      text: messageText,
+      text: messageText || "",
       sender: "user",
       timestamp: new Date(),
       conversationId,
       isRead: false,
+      ...(uploadedFileData && {
+        fileUrl: uploadedFileData.fileUrl,
+        fileName: uploadedFileData.fileName,
+        fileType: uploadedFileData.fileType,
+        fileSize: uploadedFileData.fileSize,
+      }),
     };
     setMessages((prev) => [...prev, tempMessage]);
     setInputMessage("");
+    if (selectedFile?.previewUrl) {
+      URL.revokeObjectURL(selectedFile.previewUrl);
+    }
+    setSelectedFile(null);
     stopTyping();
 
-    // Gửi message qua socket
     socket.emit("send_message", messageData, (response: any) => {
       if (response && response.error) {
-        // Nếu có lỗi, xóa message tạm và hiển thị lỗi
         setMessages((prev) =>
           prev.filter(
             (msg) => msg.id !== tempMessage.id && !msg.id?.startsWith("temp-")
@@ -345,10 +591,15 @@ export function ChatWidget() {
               ...response,
               _id: response._id,
               id: responseId || `msg-${Date.now()}`,
+              text: response.text || "",
               timestamp: response.createdAt
                 ? new Date(response.createdAt)
                 : new Date(),
               isRead: response.isRead,
+              fileUrl: response.fileUrl,
+              fileName: response.fileName,
+              fileType: response.fileType,
+              fileSize: response.fileSize,
             },
           ];
         });
@@ -393,13 +644,18 @@ export function ChatWidget() {
     return {
       id: uniqueId,
       _id: message._id,
-      text: message.text,
+      text: message.text || "",
       sender: message.sender,
       timestamp: message.createdAt
         ? new Date(message.createdAt)
         : message.timestamp || new Date(),
       conversationId: message.conversationId,
       isRead: message.isRead,
+      // Đảm bảo file info được copy
+      fileUrl: message.fileUrl,
+      fileName: message.fileName,
+      fileType: message.fileType,
+      fileSize: message.fileSize,
     };
   };
 
@@ -621,50 +877,217 @@ export function ChatWidget() {
                               : "justify-start"
                           }`}
                         >
-                          <div
-                            className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                              formatted.sender === "user"
-                                ? "bg-primary text-white"
-                                : "bg-background-dark-secondary text-text-dark-primary border border-white/10"
-                            }`}
-                          >
-                            <p className="text-sm break-words whitespace-pre-wrap">
-                              {formatted.text}
-                            </p>
-                            <div
-                              className={`flex items-center gap-2 mt-1 ${
-                                formatted.sender === "user"
-                                  ? "justify-between"
-                                  : "justify-start"
-                              }`}
-                            >
-                              <p
-                                className={`text-xs ${
+                          {/* Nếu chỉ có file/ảnh không có text, hiển thị đơn giản không bo viền */}
+                          {formatted.fileUrl && !formatted.text ? (
+                            <div className="max-w-[80%]">
+                              {formatted.fileType === "image" ? (
+                                <img
+                                  src={formatted.fileUrl}
+                                  alt={formatted.fileName || "Image"}
+                                  className="max-w-full max-h-64 object-contain cursor-pointer"
+                                  onClick={() =>
+                                    openFileInNewTab(
+                                      formatted.fileUrl,
+                                      formatted.fileName
+                                    )
+                                  }
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    openFileInNewTab(
+                                      formatted.fileUrl,
+                                      formatted.fileName
+                                    )
+                                  }
+                                  className="flex items-center gap-2 p-2 hover:opacity-80 transition-opacity w-full text-left"
+                                >
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                    />
+                                  </svg>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">
+                                      {formatted.fileName || "File"}
+                                    </p>
+                                    {formatted.fileSize && (
+                                      <p className="text-xs opacity-70">
+                                        {(formatted.fileSize / 1024).toFixed(2)}{" "}
+                                        KB
+                                      </p>
+                                    )}
+                                  </div>
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                    />
+                                  </svg>
+                                </button>
+                              )}
+                              <div
+                                className={`flex items-center gap-2 mt-1 ${
                                   formatted.sender === "user"
-                                    ? "text-white/70"
-                                    : "text-text-dark-secondary"
+                                    ? "justify-end"
+                                    : "justify-start"
                                 }`}
                               >
-                                {formatted.timestamp?.toLocaleTimeString(
-                                  "vi-VN",
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                ) ||
-                                  new Date().toLocaleTimeString("vi-VN", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                              </p>
-                              {formatted.sender === "user" &&
-                                formatted.isRead && (
-                                  <span className="text-[10px] uppercase tracking-wide text-white/90">
-                                    Đã xem
-                                  </span>
-                                )}
+                                <p className="text-xs opacity-70">
+                                  {formatted.timestamp?.toLocaleTimeString(
+                                    "vi-VN",
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }
+                                  ) ||
+                                    new Date().toLocaleTimeString("vi-VN", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                </p>
+                                {formatted.sender === "user" &&
+                                  formatted.isRead && (
+                                    <span className="text-[10px] uppercase tracking-wide opacity-70">
+                                      Đã xem
+                                    </span>
+                                  )}
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <div
+                              className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                                formatted.sender === "user"
+                                  ? "bg-primary text-white"
+                                  : "bg-background-dark-secondary text-text-dark-primary border border-white/10"
+                              }`}
+                            >
+                              {/* Hiển thị file/ảnh */}
+                              {formatted.fileUrl && (
+                                <div className="mb-2">
+                                  {formatted.fileType === "image" ? (
+                                    <img
+                                      src={formatted.fileUrl}
+                                      alt={formatted.fileName || "Image"}
+                                      className="max-w-full max-h-64 rounded-lg object-contain cursor-pointer"
+                                      onClick={() =>
+                                        openFileInNewTab(
+                                          formatted.fileUrl,
+                                          formatted.fileName
+                                        )
+                                      }
+                                    />
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        openFileInNewTab(
+                                          formatted.fileUrl,
+                                          formatted.fileName
+                                        )
+                                      }
+                                      className="flex items-center gap-2 p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors w-full text-left"
+                                    >
+                                      <svg
+                                        className="w-5 h-5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                        />
+                                      </svg>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">
+                                          {formatted.fileName || "File"}
+                                        </p>
+                                        {formatted.fileSize && (
+                                          <p className="text-xs opacity-70">
+                                            {(
+                                              formatted.fileSize / 1024
+                                            ).toFixed(2)}{" "}
+                                            KB
+                                          </p>
+                                        )}
+                                      </div>
+                                      <svg
+                                        className="w-4 h-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                        />
+                                      </svg>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                              {/* Hiển thị text */}
+                              {formatted.text && (
+                                <p className="text-sm break-words whitespace-pre-wrap">
+                                  {formatted.text}
+                                </p>
+                              )}
+                              <div
+                                className={`flex items-center gap-2 mt-1 ${
+                                  formatted.sender === "user"
+                                    ? "justify-between"
+                                    : "justify-start"
+                                }`}
+                              >
+                                <p
+                                  className={`text-xs ${
+                                    formatted.sender === "user"
+                                      ? "text-white/70"
+                                      : "text-text-dark-secondary"
+                                  }`}
+                                >
+                                  {formatted.timestamp?.toLocaleTimeString(
+                                    "vi-VN",
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }
+                                  ) ||
+                                    new Date().toLocaleTimeString("vi-VN", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                </p>
+                                {formatted.sender === "user" &&
+                                  formatted.isRead && (
+                                    <span className="text-[10px] uppercase tracking-wide text-white/90">
+                                      Đã xem
+                                    </span>
+                                  )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -677,11 +1100,150 @@ export function ChatWidget() {
                       Đang soạn tin...
                     </div>
                   )}
+                  {/* Selected file preview */}
+                  {selectedFile && (
+                    <div className="px-4 pb-2">
+                      <div className="flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/10">
+                        {selectedFile.fileType === "image" ? (
+                          <img
+                            src={selectedFile.previewUrl}
+                            alt={selectedFile.fileName}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        ) : (
+                          <svg
+                            className="w-8 h-8 text-white/70"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                            />
+                          </svg>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white truncate">
+                            {selectedFile.fileName}
+                          </p>
+                          <p className="text-xs text-white/70">
+                            {(selectedFile.fileSize / 1024).toFixed(2)} KB
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedFile.previewUrl) {
+                              URL.revokeObjectURL(selectedFile.previewUrl);
+                            }
+                            setSelectedFile(null);
+                          }}
+                          className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                          aria-label="Xóa file"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <form
                     onSubmit={handleSendMessage}
                     className="border-t border-white/10 p-4 bg-background-dark-secondary relative"
                   >
-                    <div className="flex gap-2 relative">
+                    <div className="flex gap-2 relative items-center">
+                      {/* Emoji picker button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="p-2 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
+                        aria-label="Chọn emoji"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </button>
+                      {/* File upload button */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingFile}
+                        className="p-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                        aria-label="Tải file"
+                      >
+                        {uploadingFile ? (
+                          <svg
+                            className="w-5 h-5 animate-spin"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleFileSelect(file);
+                          }
+                          e.target.value = ""; // Reset input
+                        }}
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.heic,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
+                      />
                       <input
                         ref={inputRef}
                         type="text"
@@ -692,8 +1254,11 @@ export function ChatWidget() {
                       />
                       <button
                         type="submit"
-                        disabled={!inputMessage.trim()}
-                        className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={
+                          uploadingFile ||
+                          (!inputMessage.trim() && !selectedFile)
+                        }
+                        className="bg-primary text-white p-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 flex items-center justify-center"
                         aria-label="Gửi tin nhắn"
                       >
                         <svg
@@ -711,6 +1276,20 @@ export function ChatWidget() {
                         </svg>
                       </button>
                     </div>
+                    {/* Emoji picker */}
+                    {showEmojiPicker && (
+                      <div
+                        ref={emojiPickerRef}
+                        className="absolute bottom-full left-0 mb-2 z-50"
+                      >
+                        <EmojiPicker
+                          onEmojiClick={handleEmojiClick}
+                          autoFocusSearch={false}
+                          theme={Theme.DARK}
+                          skinTonesDisabled
+                        />
+                      </div>
+                    )}
                   </form>
                 </>
               )}

@@ -7,9 +7,11 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 
 interface Message {
   _id?: string;
+  id?: string;
   text: string;
   sender: "user" | "admin";
   createdAt?: Date;
@@ -18,6 +20,10 @@ interface Message {
   phone?: string;
   email?: string;
   isRead?: boolean;
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
 }
 
 interface Conversation {
@@ -41,6 +47,7 @@ export default function AdminChatPage() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const selectedConversationRef = useRef<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -48,9 +55,71 @@ export default function AdminChatPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [typingStatus, setTypingStatus] = useState<Record<string, boolean>>({});
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{
+    file: File;
+    previewUrl: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
   const socketUrl = apiUrl.replace("/api", "");
+
+  const getExtension = (value?: string) => {
+    if (!value) return "";
+    const sanitized = value.split("?")[0];
+    const parts = sanitized.split(".");
+    return parts.length > 1 ? parts.pop()?.toLowerCase() ?? "" : "";
+  };
+
+  const openFileInNewTab = (fileUrl?: string, fileName?: string) => {
+    if (!fileUrl) return;
+    const extension =
+      getExtension(fileName) || getExtension(fileUrl.split("/").pop());
+    const officeFormats = ["doc", "docx", "ppt", "pptx", "xls", "xlsx"];
+    let targetUrl = fileUrl;
+
+    if (extension && officeFormats.includes(extension)) {
+      const absoluteUrl = fileUrl.startsWith("http")
+        ? fileUrl
+        : `${window.location.origin}${
+            fileUrl.startsWith("/") ? fileUrl : `/${fileUrl}`
+          }`;
+      targetUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(
+        absoluteUrl
+      )}`;
+    }
+
+    window.open(targetUrl, "_blank");
+  };
+
+  const isImageFile = (fileType?: string, fileUrl?: string) => {
+    if (!fileType && !fileUrl) return false;
+    if (fileType?.startsWith("image")) return true;
+    const extension = getExtension(fileUrl);
+    const imageExtensions = [
+      "jpg",
+      "jpeg",
+      "png",
+      "gif",
+      "webp",
+      "bmp",
+      "heic",
+    ];
+    return extension ? imageExtensions.includes(extension) : false;
+  };
+
+  const formatFileSize = (size?: number) => {
+    if (!size) return "";
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -59,6 +128,25 @@ export default function AdminChatPage() {
   useEffect(() => {
     selectedConversationRef.current = selectedConversation;
   }, [selectedConversation]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showEmojiPicker]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -95,6 +183,69 @@ export default function AdminChatPage() {
     emitTypingStatus(false);
   };
 
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setInputMessage((prev) => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleFileSelect = (file: File) => {
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("File không được vượt quá 20MB");
+      return;
+    }
+
+    if (selectedFile?.previewUrl) {
+      URL.revokeObjectURL(selectedFile.previewUrl);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedFile({
+      file,
+      previewUrl,
+      fileName: file.name,
+      fileType: file.type?.startsWith("image") ? "image" : "file",
+      fileSize: file.size,
+    });
+  };
+
+  const uploadSelectedFile = async () => {
+    if (!selectedFile?.file) return null;
+    setUploadingFile(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const baseUrl = apiUrl.endsWith("/api") ? apiUrl : `${apiUrl}/api`;
+      const formData = new FormData();
+      formData.append("file", selectedFile.file);
+
+      const response = await fetch(`${baseUrl}/chat/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Không thể upload file");
+      }
+
+      const data = await response.json();
+      const fileUrl = data.url.startsWith("/api/")
+        ? `${apiUrl.replace("/api", "")}${data.url}`
+        : `${baseUrl.replace("/api", "")}${data.url}`;
+
+      return {
+        fileUrl,
+        fileName: data.originalName,
+        fileType: data.fileType,
+        fileSize: data.fileSize,
+      };
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
   // Khởi tạo Socket
   useEffect(() => {
     if (!token) return;
@@ -125,11 +276,24 @@ export default function AdminChatPage() {
         ...message,
         createdAt: message.createdAt ? new Date(message.createdAt) : undefined,
       };
+      const messageId = message._id || (message as any).id;
       const isActiveConversation =
         selectedConversationRef.current === message.conversationId;
 
       if (isActiveConversation) {
-        setMessages((prev) => [...prev, normalizedMessage]);
+        setMessages((prev) => {
+          const exists = prev.some(
+            (msg) =>
+              msg._id === messageId ||
+              (messageId && msg.id === messageId) ||
+              msg.createdAt?.toString() ===
+                normalizedMessage.createdAt?.toString()
+          );
+          if (exists) {
+            return prev;
+          }
+          return [...prev, normalizedMessage];
+        });
         if (message.sender === "user") {
           markAsRead(message.conversationId);
         }
@@ -307,31 +471,74 @@ export default function AdminChatPage() {
     }));
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const currentSocket = socketRef.current;
-    if (!inputMessage.trim() || !currentSocket || !selectedConversation) return;
+    if (!currentSocket || !selectedConversation) return;
 
-    const messageData = {
+    const messageText = inputMessage.trim();
+    if (!messageText && !selectedFile) {
+      toast.error("Vui lòng nhập tin nhắn hoặc chọn file");
+      return;
+    }
+
+    const messageData: Record<string, any> = {
       conversationId: selectedConversation,
       sender: "admin" as const,
-      text: inputMessage,
     };
+
+    if (messageText) {
+      messageData.text = messageText;
+    }
+
+    let uploadedFileData: {
+      fileUrl: string;
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+    } | null = null;
+
+    if (selectedFile) {
+      try {
+        uploadedFileData = await uploadSelectedFile();
+        if (!uploadedFileData) {
+          toast.error("Không thể upload file");
+          return;
+        }
+        Object.assign(messageData, uploadedFileData);
+      } catch (error) {
+        toast.error("Có lỗi xảy ra khi upload file");
+        return;
+      }
+    }
 
     const tempMessage: Message = {
       _id: `temp-${Date.now()}`,
       conversationId: selectedConversation,
       sender: "admin",
-      text: inputMessage,
+      text: messageText,
       createdAt: new Date(),
+      ...(uploadedFileData && {
+        fileUrl: uploadedFileData.fileUrl,
+        fileName: uploadedFileData.fileName,
+        fileType: uploadedFileData.fileType,
+        fileSize: uploadedFileData.fileSize,
+      }),
     };
     setMessages((prev) => [...prev, tempMessage]);
+    setInputMessage("");
+    if (selectedFile?.previewUrl) {
+      URL.revokeObjectURL(selectedFile.previewUrl);
+    }
+    setSelectedFile(null);
+    stopTyping();
 
     currentSocket.emit("send_message", messageData, (response: any) => {
       if (!response || response.error) {
         setMessages((prev) =>
           prev.filter((msg) => msg._id !== tempMessage._id)
         );
+        toast.error("Không thể gửi tin nhắn");
         return;
       }
       setMessages((prev) => {
@@ -347,8 +554,6 @@ export default function AdminChatPage() {
         ];
       });
     });
-    setInputMessage("");
-    stopTyping();
   };
 
   const handleInputChange = (value: string) => {
@@ -427,7 +632,10 @@ export default function AdminChatPage() {
           </span>
         }
       >
-        <div className="grid gap-2 sm:gap-4 lg:gap-6" style={{ gridTemplateColumns: '3fr 7fr' }}>
+        <div
+          className="grid gap-2 sm:gap-4 lg:gap-6"
+          style={{ gridTemplateColumns: "3fr 7fr" }}
+        >
           <div className="bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm flex flex-col h-[calc(100vh-200px)] sm:h-[calc(100vh-240px)] max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-240px)] min-h-[400px] sm:min-h-[520px] overflow-hidden">
             <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-white/5">
               <p className="text-xs uppercase tracking-[0.3em] text-white/40">
@@ -471,7 +679,12 @@ export default function AdminChatPage() {
                         )}
                       </div>
                       <p className="text-xs sm:text-sm text-white/60 line-clamp-2 mt-1 sm:mt-2">
-                        {conv.lastMessage?.text || "Chưa có tin nhắn"}
+                        {conv.lastMessage?.text?.trim()
+                          ? conv.lastMessage.text
+                          : conv.lastMessage?.fileName ||
+                            (conv.lastMessage?.fileUrl
+                              ? "Đã gửi tệp"
+                              : "Chưa có tin nhắn")}
                       </p>
                     </button>
                   );
@@ -537,6 +750,26 @@ export default function AdminChatPage() {
                 >
                   {messages.map((message) => {
                     const isAdmin = message.sender === "admin";
+                    const hasFile = Boolean(message.fileUrl);
+                    const imageFile = isImageFile(
+                      message.fileType,
+                      message.fileUrl
+                    );
+                    const displayFileName =
+                      message.fileName ||
+                      message.fileUrl?.split("/").pop() ||
+                      "Tệp đính kèm";
+                    const timeLabel = message.createdAt
+                      ? new Date(message.createdAt).toLocaleTimeString(
+                          "vi-VN",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )
+                      : "";
+                    const fileSizeLabel = formatFileSize(message.fileSize);
+
                     return (
                       <div
                         key={message._id || message.createdAt?.toString()}
@@ -544,28 +777,93 @@ export default function AdminChatPage() {
                           isAdmin ? "justify-end" : "justify-start"
                         }`}
                       >
-                        <div
-                          className={`max-w-[70%] rounded-2xl px-5 py-3 shadow-lg ${
-                            isAdmin
-                              ? "bg-primary text-white rounded-br-md"
-                              : "bg-white/10 text-white rounded-bl-md border border-white/10"
-                          }`}
-                        >
-                          <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
-                            {message.text}
-                          </p>
-                          <p
-                            className={`text-xs mt-2 ${
-                              isAdmin ? "text-white/70" : "text-white/50"
-                            }`}
-                          >
-                            {message.createdAt
-                              ? new Date(message.createdAt).toLocaleTimeString(
-                                  "vi-VN",
-                                  { hour: "2-digit", minute: "2-digit" }
+                        <div className="flex flex-col gap-2 max-w-[70%]">
+                          {hasFile && imageFile && (
+                            <img
+                              src={message.fileUrl}
+                              alt={displayFileName}
+                              className="rounded-2xl max-h-80 w-full object-contain border border-white/10 bg-black/20 cursor-pointer"
+                              onClick={() =>
+                                openFileInNewTab(
+                                  message.fileUrl,
+                                  message.fileName
                                 )
-                              : ""}
-                          </p>
+                              }
+                              loading="lazy"
+                            />
+                          )}
+
+                          {hasFile && !imageFile && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openFileInNewTab(
+                                  message.fileUrl,
+                                  message.fileName
+                                )
+                              }
+                              className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/10 border border-white/10 hover:bg-white/15 transition-colors"
+                            >
+                              <span className="p-2 rounded-xl bg-black/30 text-white/80 flex-shrink-0">
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={1.5}
+                                    d="M7 7v10a2 2 0 002 2h6a2 2 0 002-2V9.414A2 2 0 0016.414 8L13 4.586A2 2 0 0011.586 4H9a2 2 0 00-2 2z"
+                                  />
+                                </svg>
+                              </span>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold truncate">
+                                  {displayFileName}
+                                </p>
+                                <p className="text-xs text-white/60">
+                                  {fileSizeLabel
+                                    ? `${fileSizeLabel} • Nhấn để mở`
+                                    : "Nhấn để mở"}
+                                </p>
+                              </div>
+                            </button>
+                          )}
+
+                          {message.text && (
+                            <div
+                              className={`rounded-2xl px-5 py-3 shadow-lg ${
+                                isAdmin
+                                  ? "bg-primary text-white rounded-br-md"
+                                  : "bg-white/10 text-white rounded-bl-md border border-white/10"
+                              }`}
+                            >
+                              <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+                                {message.text}
+                              </p>
+                              <p
+                                className={`text-xs mt-2 ${
+                                  isAdmin ? "text-white/70" : "text-white/50"
+                                }`}
+                              >
+                                {timeLabel}
+                              </p>
+                            </div>
+                          )}
+
+                          {!message.text && timeLabel && (
+                            <p
+                              className={`text-xs ${
+                                isAdmin
+                                  ? "text-white/70 text-right"
+                                  : "text-white/50"
+                              }`}
+                            >
+                              {timeLabel}
+                            </p>
+                          )}
                         </div>
                       </div>
                     );
@@ -578,12 +876,151 @@ export default function AdminChatPage() {
                     Đang soạn tin...
                   </div>
                 )}
+                {selectedFile && (
+                  <div className="px-6 pb-2">
+                    <div className="flex items-center gap-3 p-3 rounded-2xl border border-white/10 bg-white/5">
+                      {selectedFile.fileType === "image" ? (
+                        <img
+                          src={selectedFile.previewUrl}
+                          alt={selectedFile.fileName}
+                          className="w-12 h-12 rounded-xl object-cover border border-white/10"
+                        />
+                      ) : (
+                        <span className="p-2 rounded-xl bg-white/10 text-white/70">
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M7 7v10a2 2 0 002 2h6a2 2 0 002-2V9.414A2 2 0 0016.414 8L13 4.586A2 2 0 0011.586 4H9a2 2 0 00-2 2z"
+                            />
+                          </svg>
+                        </span>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">
+                          {selectedFile.fileName}
+                        </p>
+                        <p className="text-xs text-white/60">
+                          {(selectedFile.fileSize / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedFile.previewUrl) {
+                            URL.revokeObjectURL(selectedFile.previewUrl);
+                          }
+                          setSelectedFile(null);
+                        }}
+                        className="p-2 rounded-full hover:bg-white/10 transition-colors text-white/70"
+                        aria-label="Xóa file"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <form
                   onSubmit={handleSendMessage}
-                  className="p-3 sm:p-4 border-t border-white/5 bg-white/5 rounded-b-2xl"
+                  className="p-3 sm:p-4 border-t border-white/5 bg-white/5 rounded-b-2xl relative"
                 >
-                  <div className="flex gap-2 sm:gap-3">
+                  <div className="flex gap-2 sm:gap-3 items-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker((prev) => !prev)}
+                      className="p-2 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex-shrink-0 text-white/80"
+                      aria-label="Chọn emoji"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingFile}
+                      className="p-2 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex-shrink-0 text-white/80 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Tải file"
+                    >
+                      {uploadingFile ? (
+                        <svg
+                          className="w-5 h-5 animate-spin"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                          />
+                        </svg>
+                      )}
+                    </button>
                     <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.heic,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileSelect(file);
+                        }
+                        e.target.value = "";
+                      }}
+                    />
+                    <input
+                      ref={inputRef}
                       type="text"
                       value={inputMessage}
                       onChange={(e) => handleInputChange(e.target.value)}
@@ -593,7 +1030,11 @@ export default function AdminChatPage() {
                     />
                     <button
                       type="submit"
-                      disabled={!isConnected || !inputMessage.trim()}
+                      disabled={
+                        !isConnected ||
+                        uploadingFile ||
+                        (!inputMessage.trim() && !selectedFile)
+                      }
                       className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     >
                       <svg
@@ -611,6 +1052,19 @@ export default function AdminChatPage() {
                       </svg>
                     </button>
                   </div>
+                  {showEmojiPicker && (
+                    <div
+                      ref={emojiPickerRef}
+                      className="absolute bottom-full left-3 mb-2 z-20"
+                    >
+                      <EmojiPicker
+                        onEmojiClick={handleEmojiClick}
+                        autoFocusSearch={false}
+                        theme={Theme.DARK}
+                        skinTonesDisabled
+                      />
+                    </div>
+                  )}
                 </form>
               </>
             ) : (

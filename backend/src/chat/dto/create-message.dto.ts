@@ -9,8 +9,8 @@ export class CreateMessageDto {
   sender: 'user' | 'admin';
 
   @IsString()
-  @IsNotEmpty()
-  text: string;
+  @IsOptional()
+  text?: string;
 
   @IsString()
   @IsOptional()
@@ -23,5 +23,19 @@ export class CreateMessageDto {
   @IsString()
   @IsOptional()
   email?: string;
-}
 
+  @IsString()
+  @IsOptional()
+  fileUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  fileName?: string;
+
+  @IsString()
+  @IsOptional()
+  fileType?: string;
+
+  @IsOptional()
+  fileSize?: number;
+}

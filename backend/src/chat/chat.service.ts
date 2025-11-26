@@ -35,6 +35,7 @@ export class ChatService {
   async createMessage(dto: CreateMessageDto): Promise<MessageDocument> {
     const message = new this.messageModel({
       ...dto,
+      text: dto.text || '', // Đảm bảo text luôn có giá trị (có thể là chuỗi rỗng)
       isRead: dto.sender === 'admin',
     });
     return message.save();
@@ -59,7 +60,12 @@ export class ChatService {
             unreadCount: {
               $sum: {
                 $cond: [
-                  { $and: [{ $eq: ['$sender', 'user'] }, { $eq: ['$isRead', false] }] },
+                  {
+                    $and: [
+                      { $eq: ['$sender', 'user'] },
+                      { $eq: ['$isRead', false] },
+                    ],
+                  },
                   1,
                   0,
                 ],

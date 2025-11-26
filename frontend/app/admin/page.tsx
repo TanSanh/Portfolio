@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import toast from "react-hot-toast";
+import Image from "next/image";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -23,7 +24,7 @@ interface Project {
 const projectSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống"),
   category: z.string().min(1, "Danh mục không được để trống"),
-  image: z.string().min(1, "Hình ảnh không được để trống"),
+  image: z.string().min(1, "Hình ảnh không được để trống").or(z.literal("")),
   description: z.string().min(10, "Mô tả phải có ít nhất 10 ký tự"),
   isActive: z.boolean(),
   order: z.number().min(0, "Thứ tự không được nhỏ hơn 0"),
@@ -40,6 +41,12 @@ function AdminPageContent() {
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState<{
+    file: File;
+    previewUrl: string;
+  } | null>(null);
+  const [saving, setSaving] = useState(false);
   const { token, logout } = useAuth();
 
   const {
@@ -52,14 +59,11 @@ function AdminPageContent() {
   } = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
+      image: "",
       isActive: true,
       order: 0,
     },
   });
-
-  useEffect(() => {
-    fetchProjects();
-  }, []);
 
   useEffect(() => {
     if (editingProject) {
@@ -70,13 +74,15 @@ function AdminPageContent() {
       setValue("isActive", editingProject.isActive);
       setValue("order", editingProject.order);
       setImagePreview(editingProject.image);
+      setPreviewError(false);
       setShowForm(true);
     } else {
       setImagePreview(null);
+      setPreviewError(false);
     }
   }, [editingProject, setValue]);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(
@@ -99,10 +105,94 @@ function AdminPageContent() {
     } finally {
       setLoading(false);
     }
+  }, [token, logout]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  function clearSelectedImage() {
+    if (selectedImageFile?.previewUrl) {
+      URL.revokeObjectURL(selectedImageFile.previewUrl);
+    }
+    setSelectedImageFile(null);
+    setPreviewError(false);
+  }
+
+  function handleImageSelect(file: File) {
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("File quá lớn. Vui lòng chọn file nhỏ hơn 20MB");
+      return;
+    }
+
+    if (!file.type.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
+      toast.error("Chỉ chấp nhận file ảnh (jpg, jpeg, png, gif, webp)");
+      return;
+    }
+
+    if (selectedImageFile?.previewUrl) {
+      URL.revokeObjectURL(selectedImageFile.previewUrl);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedImageFile({ file, previewUrl });
+    setImagePreview(previewUrl);
+    setPreviewError(false);
+    setImagePreview(previewUrl);
+    setPreviewError(false);
+    setValue("image", "");
+    toast.success("Ảnh đã được chọn, nhấn Tạo Mới để tải lên");
+  }
+
+  const uploadSelectedImage = async (): Promise<string | null> => {
+    if (!selectedImageFile?.file) return null;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", selectedImageFile.file);
+      const uploadUrl = `${process.env.NEXT_PUBLIC_API_URL}/projects/upload`;
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error("Upload thất bại");
+      }
+      const data = await response.json();
+      return `${process.env.NEXT_PUBLIC_API_URL}${data.url}`.trim();
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const onSubmit = async (data: ProjectFormData) => {
+  const onSubmit = async (formData: ProjectFormData) => {
     try {
+      setSaving(true);
+      let imageUrl = formData.image?.trim() || "";
+
+      if (selectedImageFile) {
+        try {
+          const uploadedUrl = await uploadSelectedImage();
+          if (!uploadedUrl) {
+            throw new Error("Upload thất bại");
+          }
+          imageUrl = uploadedUrl;
+        } catch (error) {
+          toast.error("Không thể upload ảnh. Vui lòng thử lại.");
+          return;
+        }
+      }
+
+      if (!imageUrl) {
+        toast.error("Vui lòng chọn ảnh hoặc nhập URL hình ảnh");
+        return;
+      }
+
+      const payload = { ...formData, image: imageUrl };
+
       const url = editingProject
         ? `${process.env.NEXT_PUBLIC_API_URL}/projects/${editingProject._id}`
         : `${process.env.NEXT_PUBLIC_API_URL}/projects`;
@@ -115,7 +205,7 @@ function AdminPageContent() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -125,12 +215,17 @@ function AdminPageContent() {
       toast.success(
         editingProject ? "Cập nhật thành công!" : "Tạo dự án thành công!"
       );
+      clearSelectedImage();
+      setImagePreview(null);
+      setPreviewError(false);
       reset();
       setEditingProject(null);
       setShowForm(false);
       fetchProjects();
     } catch (error) {
       toast.error("Lỗi khi lưu dự án");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -167,22 +262,26 @@ function AdminPageContent() {
     }
   };
 
-  const handleEdit = (project: Project) => {
+  function handleEdit(project: Project) {
+    clearSelectedImage();
     setEditingProject(project);
-  };
+  }
 
-  const handleCancel = () => {
+  function handleCancel() {
     reset();
     setEditingProject(null);
     setShowForm(false);
     setImagePreview(null);
-  };
+    setPreviewError(false);
+    clearSelectedImage();
+  }
 
-  const handleAddProject = () => {
+  function handleAddProject() {
+    clearSelectedImage();
     setEditingProject(null);
     reset();
     setShowForm(true);
-  };
+  }
 
   return (
     <AdminShell
@@ -270,132 +369,72 @@ function AdminPageContent() {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={async (e) => {
+                        onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
-
-                          // Validate file size (5MB)
-                          if (file.size > 5 * 1024 * 1024) {
-                            toast.error(
-                              "File quá lớn. Vui lòng chọn file nhỏ hơn 5MB"
-                            );
-                            return;
-                          }
-
-                          // Validate file type
-                          if (
-                            !file.type.match(/^image\/(jpg|jpeg|png|gif|webp)$/)
-                          ) {
-                            toast.error(
-                              "Chỉ chấp nhận file ảnh (jpg, jpeg, png, gif, webp)"
-                            );
-                            return;
-                          }
-
-                          setUploading(true);
-                          try {
-                            const formData = new FormData();
-                            formData.append("image", file);
-
-                            const uploadUrl = `${process.env.NEXT_PUBLIC_API_URL}/projects/upload`;
-
-                            const response = await fetch(uploadUrl, {
-                              method: "POST",
-                              headers: {
-                                Authorization: `Bearer ${token}`,
-                              },
-                              body: formData,
-                            });
-
-                            if (!response.ok) {
-                              throw new Error("Upload thất bại");
-                            }
-
-                            const data = await response.json();
-                            const imageUrl =
-                              `${process.env.NEXT_PUBLIC_API_URL}${data.url}`.trim();
-
-                            setValue("image", imageUrl);
-                            setImagePreview(imageUrl);
-                            toast.success("Upload ảnh thành công!");
-                          } catch (error) {
-                            toast.error("Lỗi khi upload ảnh");
-                          } finally {
-                            setUploading(false);
-                          }
+                          handleImageSelect(file);
+                          e.target.value = "";
                         }}
                         disabled={uploading}
                       />
                       <div className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white hover:bg-white/10 transition-colors text-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                         {uploading ? "Đang tải lên..." : "Chọn ảnh từ máy"}
                       </div>
-                </label>
-                <input
+                    </label>
+                    <input
                       type="text"
-                  {...register("image")}
+                      {...register("image")}
                       className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70"
                       placeholder="Hoặc nhập URL hình ảnh"
                       onChange={(e) => {
                         const url = e.target.value.trim();
+                        if (selectedImageFile) {
+                          clearSelectedImage();
+                        }
                         setValue("image", url);
                         setImagePreview(url);
+                        setPreviewError(false);
                       }}
-                />
+                    />
                   </div>
-                {errors.image && (
-                  <p className="mt-1 text-sm text-red-400">
-                    {errors.image.message}
-                  </p>
-                )}
+                  {errors.image && (
+                    <p className="mt-1 text-sm text-red-400">
+                      {errors.image.message}
+                    </p>
+                  )}
                   {(() => {
-                    const previewUrl = imagePreview || watch("image");
+                    const previewUrl =
+                      selectedImageFile?.previewUrl ||
+                      imagePreview ||
+                      watch("image");
                     return previewUrl ? (
-                  <div className="mt-4">
-                    <p className="text-sm text-white/60 mb-2">Preview:</p>
+                      <div className="mt-4">
+                        <p className="text-sm text-white/60 mb-2">Preview:</p>
                         <div className="w-full max-w-md max-h-40 rounded-lg overflow-hidden border border-white/10 bg-black/20 relative group flex items-center justify-center mx-auto">
-                      <img
-                            key={previewUrl}
-                            src={previewUrl}
-                        alt="Preview"
-                            className="max-w-full max-h-40 w-auto h-auto object-contain"
-                            onLoad={(e) => {
-                              (e.target as HTMLImageElement).style.display =
-                                "block";
-                              const errorMsg = document.getElementById(
-                                `error-${previewUrl.replace(
-                                  /[^a-zA-Z0-9]/g,
-                                  ""
-                                )}`
-                              );
-                              if (errorMsg) errorMsg.style.display = "none";
-                            }}
-                        onError={(e) => {
-                              (e.target as HTMLImageElement).style.display =
-                                "none";
-                              const errorMsg = document.getElementById(
-                                `error-${previewUrl.replace(
-                                  /[^a-zA-Z0-9]/g,
-                                  ""
-                                )}`
-                              );
-                              if (errorMsg) errorMsg.style.display = "flex";
-                            }}
-                          />
-                          <div
-                            id={`error-${previewUrl.replace(
-                              /[^a-zA-Z0-9]/g,
-                              ""
-                            )}`}
-                            className="hidden absolute inset-0 items-center justify-center text-white/50 text-sm bg-black/30"
-                          >
-                            Không thể tải ảnh
-                          </div>
+                          {!previewError ? (
+                            <Image
+                              key={previewUrl}
+                              src={previewUrl}
+                              alt="Preview"
+                              fill
+                              unoptimized
+                              sizes="(max-width: 768px) 80vw, 400px"
+                              className="object-contain"
+                              onError={() => setPreviewError(true)}
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm">
+                              Không thể tải ảnh
+                            </div>
+                          )}
                           <button
                             type="button"
                             onClick={() => {
+                              clearSelectedImage();
                               setValue("image", "");
                               setImagePreview(null);
-                        }}
+                              setPreviewError(false);
+                            }}
                             className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
                             aria-label="Xóa ảnh"
                           >
@@ -413,8 +452,8 @@ function AdminPageContent() {
                               />
                             </svg>
                           </button>
-                    </div>
-                  </div>
+                        </div>
+                      </div>
                     ) : null;
                   })()}
                 </div>
@@ -461,14 +500,14 @@ function AdminPageContent() {
                     Trạng Thái
                   </label>
                   <div className="flex items-center h-12">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      {...register("isActive")}
-                      className="w-5 h-5 rounded bg-white/5 border-white/10 text-primary focus:ring-primary"
-                    />
-                    <span>Hiển thị trên website</span>
-                  </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        {...register("isActive")}
+                        className="w-5 h-5 rounded bg-white/5 border-white/10 text-primary focus:ring-primary"
+                      />
+                      <span>Hiển thị trên website</span>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -476,9 +515,14 @@ function AdminPageContent() {
               <div className="flex gap-4">
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                  disabled={saving || uploading}
+                  className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {editingProject ? "Cập Nhật" : "Tạo Mới"}
+                  {saving
+                    ? "Đang lưu..."
+                    : editingProject
+                    ? "Cập Nhật"
+                    : "Tạo Mới"}
                 </button>
                 <button
                   type="button"
@@ -522,8 +566,8 @@ function AdminPageContent() {
           <div className="overflow-x-auto -mx-4 sm:mx-0">
             <div className="inline-block min-w-full align-middle">
               <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-white/10 text-sm text-white/60">
+                <thead>
+                  <tr className="border-b border-white/10 text-sm text-white/60">
                     <th className="text-left py-3 px-2 sm:px-4 whitespace-nowrap">
                       Thứ Tự
                     </th>
@@ -539,14 +583,14 @@ function AdminPageContent() {
                     <th className="text-left py-3 px-2 sm:px-4 whitespace-nowrap">
                       Thao Tác
                     </th>
-                </tr>
-              </thead>
-              <tbody>
-                {projects.map((project) => (
-                  <tr
-                    key={project._id}
-                    className="border-b border-white/5 hover:bg-white/5 transition-colors"
-                  >
+                  </tr>
+                </thead>
+                <tbody>
+                  {projects.map((project) => (
+                    <tr
+                      key={project._id}
+                      className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                    >
                       <td className="py-3 px-2 sm:px-4 text-white/80 text-sm">
                         {project.order}
                       </td>
@@ -557,24 +601,24 @@ function AdminPageContent() {
                       </td>
                       <td className="py-3 px-2 sm:px-4">
                         <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs sm:text-sm font-medium">
-                        {project.category}
-                      </span>
-                    </td>
+                          {project.category}
+                        </span>
+                      </td>
                       <td className="py-3 px-2 sm:px-4">
-                      <span
+                        <span
                           className={`px-2 py-1 rounded text-xs sm:text-sm font-semibold ${
-                          project.isActive
-                            ? "bg-green-500/15 text-green-400"
-                            : "bg-red-500/15 text-red-400"
-                        }`}
-                      >
-                        {project.isActive ? "Hiển thị" : "Ẩn"}
-                      </span>
-                    </td>
+                            project.isActive
+                              ? "bg-green-500/15 text-green-400"
+                              : "bg-red-500/15 text-red-400"
+                          }`}
+                        >
+                          {project.isActive ? "Hiển thị" : "Ẩn"}
+                        </span>
+                      </td>
                       <td className="py-3 px-2 sm:px-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(project)}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEdit(project)}
                             className="p-2 bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition-colors"
                             aria-label="Sửa"
                             title="Sửa"
@@ -592,11 +636,11 @@ function AdminPageContent() {
                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                               />
                             </svg>
-                        </button>
-                        <button
-                          onClick={() =>
-                            project._id && handleDelete(project._id)
-                          }
+                          </button>
+                          <button
+                            onClick={() =>
+                              project._id && handleDelete(project._id)
+                            }
                             className="p-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-colors"
                             aria-label="Xóa"
                             title="Xóa"
@@ -614,13 +658,13 @@ function AdminPageContent() {
                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                               />
                             </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
