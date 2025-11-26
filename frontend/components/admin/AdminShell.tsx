@@ -63,15 +63,50 @@ export function AdminShell({
   const pathname = usePathname();
   const { logout } = useAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#030712] text-white flex">
-      <aside className="w-64 border-r border-white/5 bg-[#040a1a] flex flex-col h-screen fixed">
-        <div className="px-6 py-6 border-b border-white/5 flex-shrink-0">
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`w-64 border-r border-white/5 bg-[#040a1a] flex flex-col h-screen fixed z-50 transition-transform duration-300 lg:translate-x-0 ${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="px-6 py-6 border-b border-white/5 flex-shrink-0 flex items-center justify-between">
+          <div>
           <p className="text-sm uppercase tracking-[0.3em] text-primary/70">
             Portfolio
           </p>
           <h2 className="text-2xl font-black tracking-tight">TanSanh</h2>
+        </div>
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+            aria-label="Đóng menu"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         </div>
         <div className="flex-1 px-4 py-6 flex flex-col overflow-hidden min-h-0">
           <div
@@ -86,6 +121,7 @@ export function AdminShell({
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                     isActive
                       ? "bg-primary text-white shadow-lg shadow-primary/25"
@@ -122,16 +158,45 @@ export function AdminShell({
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col ml-64">
-        <header className="border-b border-white/5 px-8 py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between bg-[#040918]/60 backdrop-blur-sm flex-shrink-0">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col lg:ml-64 w-full lg:w-auto">
+        <header className="border-b border-white/5 px-4 sm:px-6 lg:px-8 py-4 lg:py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between bg-[#040918]/60 backdrop-blur-sm flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="Mở menu"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
           <div>
-            <h1 className="text-3xl font-black tracking-tight mt-2">{title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+                {title}
+              </h1>
             {description && (
-              <p className="text-white/60 mt-2 max-w-3xl">{description}</p>
+                <p className="text-white/60 mt-1 sm:mt-2 text-sm sm:text-base max-w-3xl">
+                  {description}
+                </p>
             )}
+            </div>
           </div>
+          {actions && <div className="flex-shrink-0">{actions}</div>}
         </header>
-        <main className="flex-1 overflow-y-auto p-6 lg:p-10">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
+          {children}
+        </main>
       </div>
       <ConfirmModal
         isOpen={showLogoutConfirm}

@@ -184,24 +184,10 @@ function AdminPageContent() {
     setShowForm(true);
   };
 
-  const headerActions = (
-    <button
-      onClick={() => {
-        setEditingProject(null);
-        reset();
-        setShowForm((prev) => !prev);
-      }}
-      className="px-6 py-2 rounded-xl bg-primary text-white font-semibold shadow-lg shadow-primary/40 hover:bg-primary/90 transition-colors"
-    >
-      {showForm ? "Đóng Form" : "Thêm Dự Án Mới"}
-    </button>
-  );
-
   return (
     <AdminShell
       title="Quản Lý Dự Án"
       description="Theo dõi, chỉnh sửa và sắp xếp các dự án hiển thị trên website cá nhân."
-      actions={headerActions}
     >
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-4 overflow-y-auto">
@@ -210,7 +196,7 @@ function AdminPageContent() {
             onClick={handleCancel}
           />
           <div
-            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-[#0d1426] rounded-2xl p-6 border border-white/10 shadow-2xl shadow-black/70 my-auto"
+            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-[#0d1426] rounded-2xl p-4 sm:p-6 border border-white/10 shadow-2xl shadow-black/70 my-auto"
             data-lenis-prevent
             onClick={(e) => e.stopPropagation()}
           >
@@ -343,10 +329,10 @@ function AdminPageContent() {
                       <div className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white hover:bg-white/10 transition-colors text-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                         {uploading ? "Đang tải lên..." : "Chọn ảnh từ máy"}
                       </div>
-                    </label>
-                    <input
+                </label>
+                <input
                       type="text"
-                      {...register("image")}
+                  {...register("image")}
                       className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary/70"
                       placeholder="Hoặc nhập URL hình ảnh"
                       onChange={(e) => {
@@ -354,23 +340,23 @@ function AdminPageContent() {
                         setValue("image", url);
                         setImagePreview(url);
                       }}
-                    />
+                />
                   </div>
-                  {errors.image && (
-                    <p className="mt-1 text-sm text-red-400">
-                      {errors.image.message}
-                    </p>
-                  )}
+                {errors.image && (
+                  <p className="mt-1 text-sm text-red-400">
+                    {errors.image.message}
+                  </p>
+                )}
                   {(() => {
                     const previewUrl = imagePreview || watch("image");
                     return previewUrl ? (
-                      <div className="mt-4">
-                        <p className="text-sm text-white/60 mb-2">Preview:</p>
+                  <div className="mt-4">
+                    <p className="text-sm text-white/60 mb-2">Preview:</p>
                         <div className="w-full max-w-md max-h-40 rounded-lg overflow-hidden border border-white/10 bg-black/20 relative group flex items-center justify-center mx-auto">
-                          <img
+                      <img
                             key={previewUrl}
                             src={previewUrl}
-                            alt="Preview"
+                        alt="Preview"
                             className="max-w-full max-h-40 w-auto h-auto object-contain"
                             onLoad={(e) => {
                               (e.target as HTMLImageElement).style.display =
@@ -383,7 +369,7 @@ function AdminPageContent() {
                               );
                               if (errorMsg) errorMsg.style.display = "none";
                             }}
-                            onError={(e) => {
+                        onError={(e) => {
                               (e.target as HTMLImageElement).style.display =
                                 "none";
                               const errorMsg = document.getElementById(
@@ -409,7 +395,7 @@ function AdminPageContent() {
                             onClick={() => {
                               setValue("image", "");
                               setImagePreview(null);
-                            }}
+                        }}
                             className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
                             aria-label="Xóa ảnh"
                           >
@@ -427,8 +413,8 @@ function AdminPageContent() {
                               />
                             </svg>
                           </button>
-                        </div>
-                      </div>
+                    </div>
+                  </div>
                     ) : null;
                   })()}
                 </div>
@@ -475,14 +461,14 @@ function AdminPageContent() {
                     Trạng Thái
                   </label>
                   <div className="flex items-center h-12">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        {...register("isActive")}
-                        className="w-5 h-5 rounded bg-white/5 border-white/10 text-primary focus:ring-primary"
-                      />
-                      <span>Hiển thị trên website</span>
-                    </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register("isActive")}
+                      className="w-5 h-5 rounded bg-white/5 border-white/10 text-primary focus:ring-primary"
+                    />
+                    <span>Hiển thị trên website</span>
+                  </label>
                   </div>
                 </div>
               </div>
@@ -507,15 +493,17 @@ function AdminPageContent() {
         </div>
       )}
 
-      <div className="bg-white/5 rounded-2xl p-6 border border-white/10 shadow-inner shadow-black/30">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white/5 rounded-2xl p-4 sm:p-6 border border-white/10 shadow-inner shadow-black/30">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <p className="text-sm text-white/60">Danh sách dự án</p>
-            <h2 className="text-2xl font-bold">Hiện có ({projects.length})</h2>
+            <h2 className="text-xl sm:text-2xl font-bold">
+              Hiện có ({projects.length})
+            </h2>
           </div>
           <button
             onClick={handleAddProject}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-colors w-full sm:w-auto"
           >
             <span className="text-lg leading-none">+</span>
             Thêm dự án
@@ -531,15 +519,26 @@ function AdminPageContent() {
             <p className="text-white/60">Chưa có dự án nào.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="inline-block min-w-full align-middle">
+              <table className="min-w-full">
               <thead>
                 <tr className="border-b border-white/10 text-sm text-white/60">
-                  <th className="text-left py-3 px-4">Thứ Tự</th>
-                  <th className="text-left py-3 px-4">Tiêu Đề</th>
-                  <th className="text-left py-3 px-4">Danh Mục</th>
-                  <th className="text-left py-3 px-4">Trạng Thái</th>
-                  <th className="text-left py-3 px-4">Thao Tác</th>
+                    <th className="text-left py-3 px-2 sm:px-4 whitespace-nowrap">
+                      Thứ Tự
+                    </th>
+                    <th className="text-left py-3 px-2 sm:px-4 whitespace-nowrap">
+                      Tiêu Đề
+                    </th>
+                    <th className="text-left py-3 px-2 sm:px-4 whitespace-nowrap">
+                      Danh Mục
+                    </th>
+                    <th className="text-left py-3 px-2 sm:px-4 whitespace-nowrap">
+                      Trạng Thái
+                    </th>
+                    <th className="text-left py-3 px-2 sm:px-4 whitespace-nowrap">
+                      Thao Tác
+                    </th>
                 </tr>
               </thead>
               <tbody>
@@ -548,16 +547,22 @@ function AdminPageContent() {
                     key={project._id}
                     className="border-b border-white/5 hover:bg-white/5 transition-colors"
                   >
-                    <td className="py-3 px-4 text-white/80">{project.order}</td>
-                    <td className="py-3 px-4 font-semibold">{project.title}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 bg-primary/20 text-primary rounded text-sm font-medium">
+                      <td className="py-3 px-2 sm:px-4 text-white/80 text-sm">
+                        {project.order}
+                      </td>
+                      <td className="py-3 px-2 sm:px-4 font-semibold text-sm">
+                        <div className="max-w-[150px] sm:max-w-none truncate">
+                          {project.title}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 sm:px-4">
+                        <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs sm:text-sm font-medium">
                         {project.category}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
+                      <td className="py-3 px-2 sm:px-4">
                       <span
-                        className={`px-2 py-1 rounded text-sm font-semibold ${
+                          className={`px-2 py-1 rounded text-xs sm:text-sm font-semibold ${
                           project.isActive
                             ? "bg-green-500/15 text-green-400"
                             : "bg-red-500/15 text-red-400"
@@ -566,49 +571,49 @@ function AdminPageContent() {
                         {project.isActive ? "Hiển thị" : "Ẩn"}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
+                      <td className="py-3 px-2 sm:px-4">
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEdit(project)}
-                          className="p-2 bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition-colors"
-                          aria-label="Sửa"
-                          title="Sửa"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                            className="p-2 bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition-colors"
+                            aria-label="Sửa"
+                            title="Sửa"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                            />
-                          </svg>
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
                         </button>
                         <button
                           onClick={() =>
                             project._id && handleDelete(project._id)
                           }
-                          className="p-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-colors"
-                          aria-label="Xóa"
-                          title="Xóa"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                            className="p-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-colors"
+                            aria-label="Xóa"
+                            title="Xóa"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
                         </button>
                       </div>
                     </td>
@@ -616,6 +621,7 @@ function AdminPageContent() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>

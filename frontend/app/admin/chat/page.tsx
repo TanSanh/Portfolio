@@ -427,13 +427,13 @@ export default function AdminChatPage() {
           </span>
         }
       >
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm flex flex-col h-[calc(100vh-240px)] max-h-[calc(100vh-240px)] min-h-[520px] overflow-hidden">
-            <div className="px-6 py-4 border-b border-white/5">
+        <div className="grid gap-2 sm:gap-4 lg:gap-6" style={{ gridTemplateColumns: '3fr 7fr' }}>
+          <div className="bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm flex flex-col h-[calc(100vh-200px)] sm:h-[calc(100vh-240px)] max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-240px)] min-h-[400px] sm:min-h-[520px] overflow-hidden">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-white/5">
               <p className="text-xs uppercase tracking-[0.3em] text-white/40">
                 Phòng chat
               </p>
-              <h3 className="text-xl font-bold mt-2">
+              <h3 className="text-base sm:text-xl font-bold mt-1 sm:mt-2">
                 {conversations.length} cuộc trò chuyện
               </h3>
             </div>
@@ -442,7 +442,7 @@ export default function AdminChatPage() {
               data-lenis-prevent
             >
               {conversations.length === 0 ? (
-                <div className="p-6 text-center text-white/50">
+                <div className="p-4 sm:p-6 text-center text-white/50 text-sm">
                   Chưa có cuộc trò chuyện nào
                 </div>
               ) : (
@@ -454,23 +454,23 @@ export default function AdminChatPage() {
                       onClick={() =>
                         handleSelectConversation(conv.conversationId)
                       }
-                      className={`w-full text-left px-6 py-4 transition-colors ${
+                      className={`w-full text-left px-3 sm:px-6 py-2 sm:py-4 transition-colors ${
                         isActive ? "bg-primary/15" : "hover:bg-white/5"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start justify-between gap-2 sm:gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold truncate">
+                          <p className="font-semibold truncate text-xs sm:text-sm">
                             {conv.fullName || "Khách"}
                           </p>
                         </div>
                         {conv.unreadCount > 0 && (
-                          <span className="bg-red-500/20 text-red-300 text-xs font-bold rounded-full px-2 py-1 min-w-[24px] text-center">
+                          <span className="bg-red-500/20 text-red-300 text-xs font-bold rounded-full px-1.5 sm:px-2 py-0.5 sm:py-1 min-w-[18px] sm:min-w-[24px] text-center flex-shrink-0">
                             {conv.unreadCount}
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-white/60 line-clamp-2 mt-2">
+                      <p className="text-xs sm:text-sm text-white/60 line-clamp-2 mt-1 sm:mt-2">
                         {conv.lastMessage?.text || "Chưa có tin nhắn"}
                       </p>
                     </button>
@@ -480,17 +480,17 @@ export default function AdminChatPage() {
             </div>
           </div>
 
-          <div className="xl:col-span-2 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm flex flex-col h-[calc(100vh-240px)] max-h-[calc(100vh-240px)] min-h-[520px] overflow-hidden">
+          <div className="bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm flex flex-col h-[calc(100vh-200px)] sm:h-[calc(100vh-240px)] max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-240px)] min-h-[400px] sm:min-h-[520px] overflow-hidden">
             {selectedConversation ? (
               <>
-                <div className="px-6 py-4 border-b border-white/5 relative">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-2xl font-bold mt-1">
+                <div className="px-4 sm:px-6 py-4 border-b border-white/5 relative">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg sm:text-2xl font-bold mt-1 truncate">
                         {selectedConvData?.fullName || "Khách"}
                       </h3>
                     </div>
-                    <div className="relative">
+                    <div className="relative flex-shrink-0">
                       <button
                         type="button"
                         onClick={() => setIsMenuOpen((prev) => !prev)}
@@ -580,21 +580,21 @@ export default function AdminChatPage() {
                 )}
                 <form
                   onSubmit={handleSendMessage}
-                  className="p-4 border-t border-white/5 bg-white/5 rounded-b-2xl"
+                  className="p-3 sm:p-4 border-t border-white/5 bg-white/5 rounded-b-2xl"
                 >
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 sm:gap-3">
                     <input
                       type="text"
                       value={inputMessage}
                       onChange={(e) => handleInputChange(e.target.value)}
                       placeholder="Nhập nội dung..."
-                      className="flex-1 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/60"
+                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/60 text-sm sm:text-base"
                       disabled={!isConnected}
                     />
                     <button
                       type="submit"
                       disabled={!isConnected || !inputMessage.trim()}
-                      className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     >
                       <svg
                         className="w-6 h-6"
@@ -622,8 +622,8 @@ export default function AdminChatPage() {
         </div>
       </AdminShell>
       {showInfoModal && selectedConvData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#050b17] border border-white/10 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl shadow-black/60">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#050b17] border border-white/10 rounded-2xl w-full max-w-md p-4 sm:p-6 space-y-4 shadow-2xl shadow-black/60">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-white/50 uppercase tracking-[0.3em]">
