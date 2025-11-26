@@ -244,12 +244,6 @@ export function Portfolio() {
               suất cao. Từ RESTful APIs đến microservices, từ database design
               đến system architecture.
             </p>
-            <a
-              href="#work"
-              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors w-fit"
-            >
-              <span className="truncate">Xem Dự Án</span>
-            </a>
           </motion.div>
         </div>
 
