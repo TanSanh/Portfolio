@@ -7,7 +7,7 @@ import { Footer } from "@/components/client/Footer";
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen overflow-x-hidden">
       <Header />
       <Hero />
       <Portfolio />
@@ -17,4 +17,3 @@ export default function Home() {
     </main>
   );
 }
-

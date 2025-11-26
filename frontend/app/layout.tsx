@@ -55,7 +55,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} font-display bg-background-dark text-text-dark-primary antialiased`}
+        className={`${inter.variable} font-display bg-background-dark text-text-dark-primary antialiased overflow-x-hidden`}
       >
         <AuthProvider>
           <SmoothScrollProvider>
