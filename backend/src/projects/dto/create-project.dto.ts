@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsBoolean,
+  IsNumber,
+  Min,
+} from 'class-validator';
 
 export class CreateProjectDto {
   @IsString()
@@ -22,6 +29,7 @@ export class CreateProjectDto {
   isActive?: boolean;
 
   @IsNumber()
+  @Min(0, { message: 'Thứ tự không được nhỏ hơn 0' })
   @IsOptional()
   order?: number;
 }
@@ -48,7 +56,7 @@ export class UpdateProjectDto {
   isActive?: boolean;
 
   @IsNumber()
+  @Min(0, { message: 'Thứ tự không được nhỏ hơn 0' })
   @IsOptional()
   order?: number;
 }
-

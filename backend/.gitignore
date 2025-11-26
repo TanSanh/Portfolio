@@ -39,3 +39,15 @@ lerna-debug.log*
 .env.local
 .env.*.local
 
+#image
+/uploads/
+# Image files
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.svg
+*.webp
+*.ico
+

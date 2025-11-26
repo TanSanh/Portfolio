@@ -66,15 +66,18 @@ export function AdminShell({
 
   return (
     <div className="min-h-screen bg-[#030712] text-white flex">
-      <aside className="w-64 border-r border-white/5 bg-[#040a1a] flex flex-col">
-        <div className="px-6 py-6 border-b border-white/5">
+      <aside className="w-64 border-r border-white/5 bg-[#040a1a] flex flex-col h-screen fixed">
+        <div className="px-6 py-6 border-b border-white/5 flex-shrink-0">
           <p className="text-sm uppercase tracking-[0.3em] text-primary/70">
             Portfolio
           </p>
           <h2 className="text-2xl font-black tracking-tight">TanSanh</h2>
         </div>
-        <div className="flex-1 px-4 py-6 flex flex-col">
-          <div className="space-y-2">
+        <div className="flex-1 px-4 py-6 flex flex-col overflow-hidden min-h-0">
+          <div
+            className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 custom-scrollbar"
+            data-lenis-prevent
+          >
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -95,7 +98,7 @@ export function AdminShell({
               );
             })}
           </div>
-          <div className="mt-auto pt-6">
+          <div className="pt-6 flex-shrink-0">
             <button
               onClick={() => setShowLogoutConfirm(true)}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-300 border border-red-500/20 hover:bg-red-500/10 transition-all"
@@ -119,8 +122,8 @@ export function AdminShell({
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col">
-        <header className="border-b border-white/5 px-8 py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between bg-[#040918]/60 backdrop-blur-sm">
+      <div className="flex-1 flex flex-col ml-64">
+        <header className="border-b border-white/5 px-8 py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between bg-[#040918]/60 backdrop-blur-sm flex-shrink-0">
           <div>
             <h1 className="text-3xl font-black tracking-tight mt-2">{title}</h1>
             {description && (
