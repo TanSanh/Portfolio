@@ -13,15 +13,10 @@ interface Project {
 
 export function Portfolio() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [filters, setFilters] = useState<string[]>(["Tất Cả"]);
-  const [activeFilter, setActiveFilter] = useState("Tất Cả");
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
-  const itemsPerPage = 3;
 
-  // Chỉ render SVG sau khi component đã mount trên client
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -30,23 +25,15 @@ export function Portfolio() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [projectsRes, categoriesRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/categories`),
-        ]);
+        const projectsRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/projects`
+        );
 
         if (projectsRes.ok) {
           const projectsData = await projectsRes.json();
           setProjects(projectsData);
         }
-
-        if (categoriesRes.ok) {
-          const categoriesData = await categoriesRes.json();
-          setCategories(categoriesData);
-          setFilters(["Tất Cả", ...categoriesData]);
-        }
       } catch (error) {
-        // Lỗi khi tải dự án
       } finally {
         setLoading(false);
       }
@@ -55,30 +42,27 @@ export function Portfolio() {
     fetchData();
   }, []);
 
-  const filteredProjects =
-    activeFilter === "Tất Cả"
-      ? projects
-      : projects.filter((project) => project.category === activeFilter);
-
-  const paginatedProjects = filteredProjects.slice(
-    currentPage * itemsPerPage,
-    currentPage * itemsPerPage + itemsPerPage
-  );
-
-  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
+  const filteredProjects = projects;
 
   const handlePrev = () => {
-    setCurrentPage((prev) => Math.max(0, prev - 1));
+    setCurrentIndex((prev) =>
+      prev === 0 ? filteredProjects.length - 1 : prev - 1
+    );
   };
 
   const handleNext = () => {
-    setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1));
+    setCurrentIndex((prev) =>
+      prev === filteredProjects.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const handleDotClick = (index: number) => {
+    setCurrentIndex(index);
   };
 
   return (
     <section id="work" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
       <div className="container mx-auto max-w-6xl">
-        {/* Hero Section with Gradient Card */}
         <div className="mb-12 flex flex-col gap-8 md:flex-row-reverse md:items-center md:gap-12">
           <motion.div
             className="flex-1 w-full flex items-center justify-center"
@@ -95,14 +79,12 @@ export function Portfolio() {
                     transformStyle: "preserve-3d",
                   }}
                 >
-                  {/* Lưới wireframe công nghệ */}
                   {isMounted && (
                     <svg
                       className="absolute inset-0 w-full h-full animate-spin-slow"
                       viewBox="0 0 200 200"
                       style={{ animationDuration: "20s" }}
                     >
-                      {/* Kinh tuyến (meridians) */}
                       {[...Array(12)].map((_, i) => {
                         const angle = i * 30;
                         const x1 =
@@ -139,7 +121,6 @@ export function Portfolio() {
                           />
                         );
                       })}
-                      {/* Vĩ tuyến (parallels) */}
                       {[...Array(6)].map((_, i) => {
                         const radius = 20 + i * 30;
                         return (
@@ -160,7 +141,6 @@ export function Portfolio() {
                           />
                         );
                       })}
-                      {/* Điểm nút giao nhau */}
                       {[...Array(12)].map((_, i) => {
                         const angle = i * 30;
                         const x =
@@ -190,7 +170,6 @@ export function Portfolio() {
                     </svg>
                   )}
 
-                  {/* Các điểm sáng công nghệ (nodes) */}
                   {[...Array(8)].map((_, i) => {
                     const angle = i * 45 * (Math.PI / 180);
                     const radius = 40;
@@ -211,19 +190,15 @@ export function Portfolio() {
                     );
                   })}
 
-                  {/* Điểm sáng chính - glow effect */}
                   <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-cyan-400/40 blur-3xl animate-pulse" />
                   <div className="absolute bottom-1/3 right-1/4 w-24 h-24 rounded-full bg-blue-400/30 blur-2xl" />
 
-                  {/* Vòng tròn công nghệ để tạo độ sâu */}
                   <div className="absolute inset-4 rounded-full border border-cyan-400/30 shadow-[0_0_20px_rgba(34,211,238,0.3)]" />
                   <div className="absolute inset-8 rounded-full border border-cyan-400/20" />
                   <div className="absolute inset-12 rounded-full border border-cyan-400/10" />
 
-                  {/* Hiệu ứng ánh sáng phản chiếu */}
                   <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-cyan-400/20 via-transparent to-transparent" />
 
-                  {/* Hiệu ứng scan line */}
                   <div className="absolute inset-0 rounded-full bg-gradient-to-b from-transparent via-cyan-400/10 to-transparent animate-scan" />
                 </div>
               </div>
@@ -247,128 +222,233 @@ export function Portfolio() {
           </motion.div>
         </div>
 
-        {/* Filters */}
-        <div className="mb-8 flex gap-3 flex-wrap items-center justify-center">
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              onClick={() => {
-                setActiveFilter(filter);
-                setCurrentPage(0);
-              }}
-              className={`flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-4 transition-colors ${
-                activeFilter === filter
-                  ? "bg-primary text-white"
-                  : "bg-white/5 text-text-dark-secondary hover:bg-white/10"
-              }`}
-            >
-              <p className="text-sm font-medium leading-normal">{filter}</p>
-            </button>
-          ))}
-        </div>
-
-        {/* Projects Grid */}
-        <div className="relative w-full overflow-hidden mb-8">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentPage}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-            >
-              {loading ? (
-                // Loading skeleton
-                Array.from({ length: 3 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="relative w-full aspect-[3/4] overflow-hidden rounded-xl bg-white/5 animate-pulse"
-                  />
-                ))
-              ) : paginatedProjects.length > 0 ? (
-                paginatedProjects.map((project) => (
-                  <motion.div
-                    key={project._id}
-                    className="group relative cursor-pointer"
-                    whileHover={{ y: -8 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="relative w-full aspect-[3/4] overflow-hidden rounded-xl">
-                      <div
-                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 ease-in-out group-hover:scale-110"
-                        style={{ backgroundImage: `url(${project.image})` }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                    </div>
-                    <div className="absolute bottom-0 left-0 p-6 text-white transition-opacity duration-300 group-hover:opacity-0">
-                      <h3 className="text-xl font-bold">{project.title}</h3>
-                    </div>
-                    <div className="absolute inset-0 p-6 flex flex-col justify-end text-white bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <h3 className="text-2xl font-bold mb-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 ease-out">
-                        {project.title}
-                      </h3>
-                      <p className="text-sm text-white/80 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 ease-out delay-75">
-                        {project.description}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-text-dark-secondary">Chưa có dự án nào.</p>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-center gap-4">
-          <button
-            onClick={handlePrev}
-            disabled={currentPage === 0}
-            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-white/5 text-text-dark-secondary hover:bg-primary/20 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Xem nhóm dự án trước"
-            title="Dự án trước"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
+        {!loading && filteredProjects.length > 0 && (
+          <div className="flex justify-center gap-2 mb-3">
+            {filteredProjects.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => handleDotClick(index)}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  index === currentIndex
+                    ? "w-8 bg-primary"
+                    : "w-2 bg-white/20 hover:bg-white/40"
+                }`}
+                aria-label={`Go to project ${index + 1}`}
               />
-            </svg>
-          </button>
-          <button
-            onClick={handleNext}
-            disabled={currentPage >= totalPages - 1}
-            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-white/5 text-text-dark-secondary hover:bg-primary/20 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Xem nhóm dự án tiếp theo"
-            title="Dự án tiếp theo"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </button>
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      <div className="w-full overflow-visible">
+        <div className="relative w-full mb-8 overflow-visible">
+          {loading ? (
+            <div className="flex justify-center items-center h-[500px]">
+              <div className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white/5 animate-pulse" />
+            </div>
+          ) : filteredProjects.length > 0 ? (
+            <div className="relative h-[520px] w-full flex items-center justify-center overflow-visible">
+              <div
+                className="relative w-full max-w-[100vw] h-full flex items-center justify-center"
+                style={{
+                  perspective: "2000px",
+                  perspectiveOrigin: "center center",
+                }}
+              >
+                {(() => {
+                  const totalProjects = filteredProjects.length;
+                  if (totalProjects === 0) return null;
+
+                  const displayCards: Array<{
+                    project: Project;
+                    displayIndex: number;
+                    offset: number;
+                  }> = [];
+
+                  for (let i = -3; i <= 3; i++) {
+                    const actualIndex =
+                      (((currentIndex + i) % totalProjects) + totalProjects) %
+                      totalProjects;
+                    displayCards.push({
+                      project: filteredProjects[actualIndex],
+                      displayIndex: actualIndex,
+                      offset: i,
+                    });
+                  }
+
+                  return displayCards.map(
+                    ({ project, displayIndex, offset }) => {
+                      const absOffset = Math.abs(offset);
+                      const isActive = offset === 0;
+
+                      let scale = 1;
+                      let opacity = 1;
+                      let zIndex = 0;
+                      let glowOpacity = 0.6;
+                      let rotationY = 0;
+                      let translateZ = 0;
+
+                      if (isActive) {
+                        scale = 1;
+                        opacity = 1;
+                        zIndex = 10;
+                        glowOpacity = 0.6;
+                        rotationY = 0;
+                        translateZ = 0;
+                      } else if (absOffset === 1) {
+                        scale = 0.98;
+                        opacity = 0.95;
+                        zIndex = 8;
+                        glowOpacity = 0.55;
+                        rotationY = -offset * 40;
+                        translateZ = -30;
+                      } else if (absOffset === 2) {
+                        scale = 0.75;
+                        opacity = 0.7;
+                        zIndex = 4;
+                        glowOpacity = 0.25;
+                        rotationY = -offset * 30;
+                        translateZ = -150;
+                      } else if (absOffset === 3) {
+                        scale = 0.45;
+                        opacity = 0.4;
+                        zIndex = 1;
+                        glowOpacity = 0.1;
+                        rotationY = -offset * 30;
+                        translateZ = -250;
+                      }
+
+                      const radius = 540;
+                      const angleStep = 30;
+                      const angle = offset * angleStep * (Math.PI / 180);
+                      const translateX = Math.sin(angle) * radius + offset * 60;
+                      const translateY = -Math.cos(angle) * radius * 0.15 + 65;
+
+                      return (
+                        <motion.div
+                          key={project._id}
+                          layout
+                          className="absolute w-full max-w-sm cursor-pointer h-[460px]"
+                          style={{
+                            zIndex,
+                            transformOrigin: "center center",
+                            transformStyle: "preserve-3d",
+                          }}
+                          initial={false}
+                          animate={{
+                            x: translateX,
+                            y: translateY,
+                            z: translateZ,
+                            rotateY: rotationY,
+                            scale,
+                            opacity,
+                          }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 400,
+                            damping: 35,
+                            mass: 0.6,
+                          }}
+                          onClick={() => handleDotClick(displayIndex)}
+                        >
+                          <div
+                            className="relative w-full h-full group flex flex-col"
+                            style={{ transformStyle: "preserve-3d" }}
+                          >
+                            <div
+                              className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-primary via-cyan-500 to-indigo-500 blur-md transition-opacity duration-300"
+                              style={{ opacity: glowOpacity }}
+                            />
+
+                            <div className="relative w-full h-full overflow-hidden rounded-2xl bg-black/60 backdrop-blur-sm border-2 border-white/20 flex flex-col shadow-2xl">
+                              <div className="relative w-full h-[220px] overflow-hidden">
+                                <div
+                                  className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                                  style={{
+                                    backgroundImage: `url(${project.image})`,
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                              </div>
+
+                              <div className="p-6 flex flex-1 flex-col gap-4 bg-black/40 backdrop-blur-sm">
+                                <h3 className="text-2xl font-black uppercase tracking-tight text-white">
+                                  {project.title}
+                                </h3>
+
+                                <p className="text-sm text-white/90 leading-relaxed line-clamp-3">
+                                  {project.description}
+                                </p>
+
+                                <div className="mt-auto">
+                                  <button className="w-full py-3 px-6 rounded-lg bg-gradient-to-r from-primary via-cyan-500 to-indigo-500 text-white font-bold uppercase tracking-wide hover:shadow-lg hover:shadow-primary/50 transition-all duration-300 transform hover:scale-[1.02]">
+                                    Khám Phá
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    }
+                  );
+                })()}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-text-dark-secondary">Chưa có dự án nào.</p>
+            </div>
+          )}
+        </div>
+
+        {!loading && filteredProjects.length > 1 && (
+          <div className="flex justify-center gap-4 mt-2">
+            <button
+              onClick={handlePrev}
+              className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-white/5 text-text-dark-secondary hover:bg-primary/20 hover:text-primary transition-colors"
+              aria-label="Dự án trước"
+              title="Dự án trước"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={handleNext}
+              className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-white/5 text-text-dark-secondary hover:bg-primary/20 hover:text-primary transition-colors"
+              aria-label="Dự án tiếp theo"
+              title="Dự án tiếp theo"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8"></div>
     </section>
   );
 }
