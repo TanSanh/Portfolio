@@ -699,10 +699,10 @@ export default function AdminChatPage() {
             </div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm flex flex-col h-[calc(100vh-200px)] sm:h-[calc(100vh-240px)] max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-240px)] min-h-[400px] sm:min-h-[520px] overflow-hidden">
+          <div className="bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm flex flex-col h-[calc(100vh-200px)] sm:h-[calc(100vh-240px)] max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-240px)] min-h-[400px] sm:min-h-[520px] overflow-hidden relative">
             {selectedConversation ? (
               <>
-                <div className="px-4 sm:px-6 py-4 border-b border-white/5 relative">
+                <div className="px-4 sm:px-6 py-4 border-b border-white/5 relative flex-shrink-0">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="text-lg sm:text-2xl font-bold mt-1 truncate">
@@ -886,21 +886,21 @@ export default function AdminChatPage() {
                   </div>
                 )}
                 {selectedFile && (
-                  <div className="px-6 pb-2">
-                    <div className="flex items-center gap-3 p-3 rounded-2xl border border-white/10 bg-white/5">
+                  <div className="px-3 sm:px-4 md:px-6 pb-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/10 bg-white/5">
                       {selectedFile.fileType === "image" ? (
                         <Image
                           src={selectedFile.previewUrl}
                           alt={selectedFile.fileName}
                           width={48}
                           height={48}
-                          className="w-12 h-12 rounded-xl object-cover border border-white/10"
+                          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl object-cover border border-white/10 flex-shrink-0"
                           unoptimized
                         />
                       ) : (
-                        <span className="p-2 rounded-xl bg-white/10 text-white/70">
+                        <span className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-white/10 text-white/70 flex-shrink-0">
                           <svg
-                            className="w-5 h-5"
+                            className="w-4 h-4 sm:w-5 sm:h-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -915,7 +915,7 @@ export default function AdminChatPage() {
                         </span>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">
+                        <p className="text-xs sm:text-sm font-medium text-white truncate">
                           {selectedFile.fileName}
                         </p>
                         <p className="text-xs text-white/60">
@@ -930,11 +930,11 @@ export default function AdminChatPage() {
                           }
                           setSelectedFile(null);
                         }}
-                        className="p-2 rounded-full hover:bg-white/10 transition-colors text-white/70"
+                        className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-colors text-white/70 flex-shrink-0"
                         aria-label="Xóa file"
                       >
                         <svg
-                          className="w-4 h-4"
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -952,17 +952,17 @@ export default function AdminChatPage() {
                 )}
                 <form
                   onSubmit={handleSendMessage}
-                  className="p-3 sm:p-4 border-t border-white/5 bg-white/5 rounded-b-2xl relative"
+                  className="p-2 sm:p-3 md:p-4 border-t border-white/5 bg-white/5 rounded-b-2xl relative flex-shrink-0"
                 >
-                  <div className="flex gap-2 sm:gap-3 items-center">
+                  <div className="flex gap-1.5 sm:gap-2 md:gap-3 items-center w-full">
                     <button
                       type="button"
                       onClick={() => setShowEmojiPicker((prev) => !prev)}
-                      className="p-2 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex-shrink-0 text-white/80"
+                      className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex-shrink-0 text-white/80"
                       aria-label="Chọn emoji"
                     >
                       <svg
-                        className="w-5 h-5"
+                        className="w-4 h-4 sm:w-5 sm:h-5"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -979,12 +979,12 @@ export default function AdminChatPage() {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploadingFile}
-                      className="p-2 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex-shrink-0 text-white/80 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex-shrink-0 text-white/80 disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Tải file"
                     >
                       {uploadingFile ? (
                         <svg
-                          className="w-5 h-5 animate-spin"
+                          className="w-4 h-4 sm:w-5 sm:h-5 animate-spin"
                           fill="none"
                           viewBox="0 0 24 24"
                         >
@@ -1004,7 +1004,7 @@ export default function AdminChatPage() {
                         </svg>
                       ) : (
                         <svg
-                          className="w-5 h-5"
+                          className="w-4 h-4 sm:w-5 sm:h-5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -1037,7 +1037,7 @@ export default function AdminChatPage() {
                       value={inputMessage}
                       onChange={(e) => handleInputChange(e.target.value)}
                       placeholder="Nhập nội dung..."
-                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/60 text-sm sm:text-base"
+                      className="flex-1 min-w-0 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-3 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/60 text-xs sm:text-sm md:text-base"
                       disabled={!isConnected}
                     />
                     <button
@@ -1047,10 +1047,10 @@ export default function AdminChatPage() {
                         uploadingFile ||
                         (!inputMessage.trim() && !selectedFile)
                       }
-                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                      className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     >
                       <svg
-                        className="w-6 h-6"
+                        className="w-5 h-5 sm:w-6 sm:h-6"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
