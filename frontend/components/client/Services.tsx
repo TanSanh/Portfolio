@@ -49,12 +49,14 @@ export function Services() {
           {services.map((service, index) => (
             <motion.div
               key={service.title}
-              className="flex h-full flex-1 flex-col gap-4 rounded-xl border border-white/10 bg-white/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1 hover:border-primary/50"
+              className="group relative flex h-full flex-1 flex-col gap-4 rounded-xl border-l border-r border-b border-white/10 bg-white/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1 hover:border-l-purple-500 hover:border-r-purple-500 hover:border-b-purple-500 overflow-hidden"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
+              {/* Gradient top border on hover */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-primary via-cyan-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-xl" />
               <div className="text-primary text-4xl">
                 {service.icon === "code" && (
                   <svg
