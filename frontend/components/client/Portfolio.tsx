@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Project {
@@ -16,6 +16,23 @@ export function Portfolio() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [rotation, setRotation] = useState({ x: -20, y: 45 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [flowProgress, setFlowProgress] = useState(0);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const rotationRef = useRef({ x: -20, y: 45 });
+  const cubeRef = useRef<HTMLDivElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isDragging) return;
+
+    const interval = setInterval(() => {
+      setFlowProgress((prev) => (prev + 1) % 100);
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [isDragging]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -60,6 +77,335 @@ export function Portfolio() {
     setCurrentIndex(index);
   };
 
+  const updateRotation = () => {
+    if (cubeRef.current) {
+      cubeRef.current.style.transform = `rotateX(${rotationRef.current.x}deg) rotateY(${rotationRef.current.y}deg)`;
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    rotationRef.current = rotation;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    e.preventDefault();
+
+    const deltaX = e.clientX - dragStartRef.current.x;
+    const deltaY = e.clientY - dragStartRef.current.y;
+
+    rotationRef.current = {
+      x: rotationRef.current.x - deltaY * 0.5,
+      y: rotationRef.current.y + deltaX * 0.5,
+    };
+
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+
+    if (animationFrameRef.current === null) {
+      animationFrameRef.current = requestAnimationFrame(() => {
+        updateRotation();
+        animationFrameRef.current = null;
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    setRotation({ ...rotationRef.current });
+  };
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+
+      const deltaX = e.clientX - dragStartRef.current.x;
+      const deltaY = e.clientY - dragStartRef.current.y;
+
+      rotationRef.current = {
+        x: rotationRef.current.x - deltaY * 0.5,
+        y: rotationRef.current.y + deltaX * 0.5,
+      };
+
+      dragStartRef.current = { x: e.clientX, y: e.clientY };
+
+      if (animationFrameRef.current === null) {
+        animationFrameRef.current = requestAnimationFrame(() => {
+          updateRotation();
+          animationFrameRef.current = null;
+        });
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      setIsDragging(false);
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      setRotation({ ...rotationRef.current });
+    };
+
+    window.addEventListener("mousemove", handleGlobalMouseMove);
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [isDragging]);
+
+  const generateBackendArchitecture = useMemo(() => {
+    const cubeSize = 180;
+    const gridSize = 3;
+    const spacing = cubeSize / (gridSize - 1);
+    const halfSize = cubeSize / 2;
+
+    const layers = [
+      { type: "api", color: "#06b6d4", label: "API Layer" },
+      { type: "service", color: "#3b82f6", label: "Service Layer" },
+      { type: "cache", color: "#f59e0b", label: "Cache Layer" },
+      { type: "database", color: "#10b981", label: "Database Layer" },
+    ];
+
+    const nodes: Array<{
+      x: number;
+      y: number;
+      z: number;
+      type: string;
+      layerIndex: number;
+      isCorner: boolean;
+      isEdge: boolean;
+      face: string;
+    }> = [];
+    const edges: Array<{ from: number; to: number }> = [];
+    const dataFlows: Array<{
+      from: { x: number; y: number; z: number };
+      to: { x: number; y: number; z: number };
+      progress: number;
+    }> = [];
+
+    // Mặt trước - API Layer
+    for (let x = 0; x < gridSize; x++) {
+      for (let y = 0; y < gridSize; y++) {
+        const nodeX = (x - (gridSize - 1) / 2) * spacing;
+        const nodeY = (y - (gridSize - 1) / 2) * spacing;
+        const nodeZ = halfSize;
+        const isCorner =
+          (x === 0 || x === gridSize - 1) && (y === 0 || y === gridSize - 1);
+        const isEdge =
+          x === 0 || x === gridSize - 1 || y === 0 || y === gridSize - 1;
+
+        nodes.push({
+          x: nodeX,
+          y: nodeY,
+          z: nodeZ,
+          type: "api",
+          layerIndex: 0,
+          isCorner,
+          isEdge,
+          face: "front",
+        });
+      }
+    }
+
+    // Mặt sau - Database Layer
+    for (let x = 0; x < gridSize; x++) {
+      for (let y = 0; y < gridSize; y++) {
+        const nodeX = (x - (gridSize - 1) / 2) * spacing;
+        const nodeY = (y - (gridSize - 1) / 2) * spacing;
+        const nodeZ = -halfSize;
+        const isCorner =
+          (x === 0 || x === gridSize - 1) && (y === 0 || y === gridSize - 1);
+        const isEdge =
+          x === 0 || x === gridSize - 1 || y === 0 || y === gridSize - 1;
+
+        nodes.push({
+          x: nodeX,
+          y: nodeY,
+          z: nodeZ,
+          type: "database",
+          layerIndex: 3,
+          isCorner,
+          isEdge,
+          face: "back",
+        });
+      }
+    }
+
+    // Mặt trên - Service Layer
+    for (let x = 0; x < gridSize; x++) {
+      for (let z = 0; z < gridSize; z++) {
+        const nodeX = (x - (gridSize - 1) / 2) * spacing;
+        const nodeY = halfSize;
+        const nodeZ = (z - (gridSize - 1) / 2) * spacing;
+        const isCorner =
+          (x === 0 || x === gridSize - 1) && (z === 0 || z === gridSize - 1);
+        const isEdge =
+          x === 0 || x === gridSize - 1 || z === 0 || z === gridSize - 1;
+
+        nodes.push({
+          x: nodeX,
+          y: nodeY,
+          z: nodeZ,
+          type: "service",
+          layerIndex: 1,
+          isCorner,
+          isEdge,
+          face: "top",
+        });
+      }
+    }
+
+    // Mặt dưới - Cache Layer
+    for (let x = 0; x < gridSize; x++) {
+      for (let z = 0; z < gridSize; z++) {
+        const nodeX = (x - (gridSize - 1) / 2) * spacing;
+        const nodeY = -halfSize;
+        const nodeZ = (z - (gridSize - 1) / 2) * spacing;
+        const isCorner =
+          (x === 0 || x === gridSize - 1) && (z === 0 || z === gridSize - 1);
+        const isEdge =
+          x === 0 || x === gridSize - 1 || z === 0 || z === gridSize - 1;
+
+        nodes.push({
+          x: nodeX,
+          y: nodeY,
+          z: nodeZ,
+          type: "cache",
+          layerIndex: 2,
+          isCorner,
+          isEdge,
+          face: "bottom",
+        });
+      }
+    }
+
+    // Mặt phải
+    for (let y = 1; y < gridSize - 1; y++) {
+      for (let z = 1; z < gridSize - 1; z++) {
+        const nodeX = halfSize;
+        const nodeY = (y - (gridSize - 1) / 2) * spacing;
+        const nodeZ = (z - (gridSize - 1) / 2) * spacing;
+
+        nodes.push({
+          x: nodeX,
+          y: nodeY,
+          z: nodeZ,
+          type: "service",
+          layerIndex: 1,
+          isCorner: false,
+          isEdge: true,
+          face: "right",
+        });
+      }
+    }
+
+    // Mặt trái
+    for (let y = 1; y < gridSize - 1; y++) {
+      for (let z = 1; z < gridSize - 1; z++) {
+        const nodeX = -halfSize;
+        const nodeY = (y - (gridSize - 1) / 2) * spacing;
+        const nodeZ = (z - (gridSize - 1) / 2) * spacing;
+
+        nodes.push({
+          x: nodeX,
+          y: nodeY,
+          z: nodeZ,
+          type: "cache",
+          layerIndex: 2,
+          isCorner: false,
+          isEdge: true,
+          face: "left",
+        });
+      }
+    }
+
+    nodes.forEach((node1, i) => {
+      nodes.forEach((node2, j) => {
+        if (i >= j) return;
+        if (node1.face !== node2.face) return;
+
+        const dx = Math.abs(node1.x - node2.x);
+        const dy = Math.abs(node1.y - node2.y);
+        const dz = Math.abs(node1.z - node2.z);
+
+        const isAdjacent =
+          (dx === spacing && dy === 0 && dz === 0) ||
+          (dx === 0 && dy === spacing && dz === 0) ||
+          (dx === 0 && dy === 0 && dz === spacing);
+
+        if (isAdjacent) {
+          edges.push({ from: i, to: j });
+        }
+      });
+    });
+
+    nodes.forEach((node1, i) => {
+      nodes.forEach((node2, j) => {
+        if (i >= j) return;
+        if (node1.face === node2.face) return;
+
+        const dx = Math.abs(node1.x - node2.x);
+        const dy = Math.abs(node1.y - node2.y);
+        const dz = Math.abs(node1.z - node2.z);
+        if (
+          (dx === 0 && dy === 0 && dz === cubeSize) ||
+          (dx === 0 && dy === cubeSize && dz === 0) ||
+          (dx === cubeSize && dy === 0 && dz === 0)
+        ) {
+          edges.push({ from: i, to: j });
+        }
+      });
+    });
+
+    const apiNodes = nodes.filter((n) => n.type === "api" && n.isCorner);
+    const serviceNodes = nodes.filter(
+      (n) => n.type === "service" && n.isCorner
+    );
+    const cacheNodes = nodes.filter((n) => n.type === "cache" && n.isCorner);
+    const dbNodes = nodes.filter((n) => n.type === "database" && n.isCorner);
+    if (apiNodes.length > 0 && serviceNodes.length > 0) {
+      dataFlows.push({
+        from: { x: apiNodes[0].x, y: apiNodes[0].y, z: apiNodes[0].z },
+        to: {
+          x: serviceNodes[0].x,
+          y: serviceNodes[0].y,
+          z: serviceNodes[0].z,
+        },
+        progress: 0,
+      });
+    }
+
+    if (serviceNodes.length > 0 && cacheNodes.length > 0) {
+      dataFlows.push({
+        from: {
+          x: serviceNodes[0].x,
+          y: serviceNodes[0].y,
+          z: serviceNodes[0].z,
+        },
+        to: { x: cacheNodes[0].x, y: cacheNodes[0].y, z: cacheNodes[0].z },
+        progress: 33,
+      });
+    }
+    if (cacheNodes.length > 0 && dbNodes.length > 0) {
+      dataFlows.push({
+        from: { x: cacheNodes[0].x, y: cacheNodes[0].y, z: cacheNodes[0].z },
+        to: { x: dbNodes[0].x, y: dbNodes[0].y, z: dbNodes[0].z },
+        progress: 66,
+      });
+    }
+
+    return { nodes, edges, dataFlows, layers };
+  }, []);
+
   return (
     <section id="work" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
       <div className="container mx-auto max-w-6xl">
@@ -71,136 +417,286 @@ export function Portfolio() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <div className="relative w-full max-w-md aspect-square perspective-1000 group sphere-container">
-              <div className="absolute inset-0 animate-sphere-3d">
-                <div
-                  className="w-full h-full rounded-full bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 shadow-2xl shadow-cyan-500/50 relative overflow-hidden"
-                  style={{
-                    transformStyle: "preserve-3d",
-                  }}
-                >
-                  {isMounted && (
-                    <svg
-                      className="absolute inset-0 w-full h-full animate-spin-slow"
-                      viewBox="0 0 200 200"
-                      style={{ animationDuration: "20s" }}
-                    >
-                      {[...Array(12)].map((_, i) => {
-                        const angle = i * 30;
-                        const x1 =
-                          Math.round(
-                            (100 + 100 * Math.cos((angle * Math.PI) / 180)) * 10
-                          ) / 10;
-                        const y1 =
-                          Math.round(
-                            (100 + 100 * Math.sin((angle * Math.PI) / 180)) * 10
-                          ) / 10;
-                        const x2 =
-                          Math.round(
-                            (100 - 100 * Math.cos((angle * Math.PI) / 180)) * 10
-                          ) / 10;
-                        const y2 =
-                          Math.round(
-                            (100 - 100 * Math.sin((angle * Math.PI) / 180)) * 10
-                          ) / 10;
+            <div
+              className="relative w-full max-w-md aspect-square flex items-center justify-center cursor-grab active:cursor-grabbing"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              style={{ perspective: "1000px" }}
+            >
+              <div
+                ref={cubeRef}
+                className="relative"
+                style={{
+                  transformStyle: "preserve-3d",
+                  transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
+                  willChange: "transform",
+                  transition: isDragging ? "none" : "transform 0.1s ease-out",
+                }}
+              >
+                {(() => {
+                  const { nodes, edges, dataFlows, layers } =
+                    generateBackendArchitecture;
+
+                  const getLayerColor = (type: string) => {
+                    switch (type) {
+                      case "api":
+                        return "#06b6d4";
+                      case "service":
+                        return "#3b82f6";
+                      case "cache":
+                        return "#f59e0b";
+                      case "database":
+                        return "#10b981";
+                      default:
+                        return "#6366f1";
+                    }
+                  };
+
+                  return (
+                    <>
+                      {edges
+                        .filter((edge) => {
+                          const from = nodes[edge.from];
+                          const to = nodes[edge.to];
+                          return (
+                            from &&
+                            to &&
+                            (from.isCorner ||
+                              from.isEdge ||
+                              to.isCorner ||
+                              to.isEdge)
+                          );
+                        })
+                        .map((edge, index) => {
+                          const from = nodes[edge.from];
+                          const to = nodes[edge.to];
+                          if (!from || !to) return null;
+
+                          const length = Math.sqrt(
+                            Math.pow(to.x - from.x, 2) +
+                              Math.pow(to.y - from.y, 2) +
+                              Math.pow(to.z - from.z, 2)
+                          );
+                          const midX = (from.x + to.x) / 2;
+                          const midY = (from.y + to.y) / 2;
+                          const midZ = (from.z + to.z) / 2;
+
+                          const dx = to.x - from.x;
+                          const dy = to.y - from.y;
+                          const dz = to.z - from.z;
+                          const rotY = Math.atan2(dx, dz) * (180 / Math.PI);
+                          const rotX =
+                            -Math.asin(dy / length) * (180 / Math.PI);
+                          const color = getLayerColor(from.type);
+                          const isSameFace = from.face === to.face;
+
+                          return (
+                            <div
+                              key={`edge-${index}`}
+                              className="absolute origin-center"
+                              style={{
+                                transformStyle: "preserve-3d",
+                                transform: `translate3d(${midX}px, ${midY}px, ${midZ}px) rotateY(${rotY}deg) rotateX(${rotX}deg)`,
+                                width: `${length}px`,
+                                height: isSameFace ? "1.5px" : "1px",
+                                background: isSameFace
+                                  ? `linear-gradient(90deg, transparent, ${color}80, ${color}, ${color}80, transparent)`
+                                  : "linear-gradient(90deg, transparent, rgba(6,182,212,0.4), transparent)",
+                                boxShadow: isSameFace
+                                  ? `0 0 3px ${color}60, 0 0 6px ${color}30`
+                                  : "0 0 2px rgba(6,182,212,0.3)",
+                              }}
+                            />
+                          );
+                        })}
+
+                      {dataFlows.map((flow, index) => {
+                        const progress = (flow.progress + flowProgress) % 100;
+                        const currentX =
+                          flow.from.x +
+                          ((flow.to.x - flow.from.x) * progress) / 100;
+                        const currentY =
+                          flow.from.y +
+                          ((flow.to.y - flow.from.y) * progress) / 100;
+                        const currentZ =
+                          flow.from.z +
+                          ((flow.to.z - flow.from.z) * progress) / 100;
+
                         return (
-                          <line
-                            key={`meridian-${i}`}
-                            x1={x1}
-                            y1={y1}
-                            x2={x2}
-                            y2={y2}
-                            stroke="rgba(34, 211, 238, 0.5)"
-                            strokeWidth="0.8"
-                            className="animate-pulse"
+                          <div
+                            key={`flow-${index}`}
+                            className="absolute"
                             style={{
-                              filter:
-                                "drop-shadow(0 0 2px rgba(34, 211, 238, 0.8))",
-                              animationDelay: `${i * 0.1}s`,
+                              transformStyle: "preserve-3d",
+                              transform: `translate3d(${currentX}px, ${currentY}px, ${currentZ}px)`,
                             }}
-                          />
+                          >
+                            <div
+                              className="absolute rounded-full animate-pulse"
+                              style={{
+                                width: "8px",
+                                height: "8px",
+                                left: "-4px",
+                                top: "-4px",
+                                background:
+                                  "radial-gradient(circle, #06b6d4, #0891b2)",
+                                boxShadow:
+                                  "0 0 10px rgba(6,182,212,1), 0 0 20px rgba(6,182,212,0.6)",
+                              }}
+                            />
+                          </div>
                         );
                       })}
-                      {[...Array(6)].map((_, i) => {
-                        const radius = 20 + i * 30;
+
+                      {nodes.map((node, index) => {
+                        const color = getLayerColor(node.type);
+                        const size = node.isCorner ? 20 : node.isEdge ? 14 : 10;
+                        const showIcon = node.isCorner || node.isEdge;
+
                         return (
-                          <circle
-                            key={`parallel-${i}`}
-                            cx="100"
-                            cy="100"
-                            r={radius}
-                            fill="none"
-                            stroke="rgba(34, 211, 238, 0.4)"
-                            strokeWidth="0.8"
-                            className="animate-pulse"
+                          <div
+                            key={`node-${index}`}
+                            className="absolute"
                             style={{
-                              animationDelay: `${i * 0.2}s`,
-                              filter:
-                                "drop-shadow(0 0 2px rgba(34, 211, 238, 0.6))",
+                              transformStyle: "preserve-3d",
+                              transform: `translate3d(${node.x}px, ${node.y}px, ${node.z}px)`,
                             }}
-                          />
+                          >
+                            {node.type === "database" && (
+                              <>
+                                {[0, 1, 2].map((i) => (
+                                  <div
+                                    key={`disc-${i}`}
+                                    className="absolute"
+                                    style={{
+                                      left: "-10px",
+                                      top: `${-10 + i * 4}px`,
+                                      width: "20px",
+                                      height: "5px",
+                                      borderRadius: "2px",
+                                      background:
+                                        i === 0
+                                          ? `linear-gradient(90deg, ${color}, ${color}dd)`
+                                          : `linear-gradient(90deg, ${color}80, ${color}60)`,
+                                      boxShadow:
+                                        i === 0
+                                          ? `0 0 10px ${color}cc, 0 0 20px ${color}80`
+                                          : `0 0 6px ${color}60`,
+                                      border: `1px solid ${color}60`,
+                                    }}
+                                  />
+                                ))}
+                              </>
+                            )}
+
+                            {node.type !== "database" && (
+                              <div
+                                className={`absolute rounded-full ${
+                                  node.isCorner ? "animate-pulse" : ""
+                                }`}
+                                style={{
+                                  width: `${size}px`,
+                                  height: `${size}px`,
+                                  left: `-${size / 2}px`,
+                                  top: `-${size / 2}px`,
+                                  background: node.isCorner
+                                    ? `radial-gradient(circle, ${color}, ${color}dd)`
+                                    : `radial-gradient(circle, ${color}80, ${color}60)`,
+                                  boxShadow: node.isCorner
+                                    ? `0 0 16px ${color}cc, 0 0 32px ${color}80, inset 0 0 8px ${color}40`
+                                    : `0 0 6px ${color}60, 0 0 12px ${color}30`,
+                                }}
+                              />
+                            )}
+
+                            {showIcon && (
+                              <div
+                                className="absolute"
+                                style={{
+                                  left: node.isCorner ? "-14px" : "-12px",
+                                  top: node.isCorner ? "-14px" : "-12px",
+                                  width: node.isCorner ? "28px" : "24px",
+                                  height: node.isCorner ? "28px" : "24px",
+                                  transformStyle: "preserve-3d",
+                                  backgroundColor: "rgba(0, 0, 0, 0.3)",
+                                  borderRadius: "50%",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  backdropFilter: "blur(4px)",
+                                }}
+                              >
+                                {node.type === "api" && (
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="w-full h-full"
+                                    style={{
+                                      color: "#ffffff",
+                                      filter: `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 16px ${color})`,
+                                      padding: "4px",
+                                    }}
+                                  >
+                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                  </svg>
+                                )}
+                                {node.type === "service" && (
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="w-full h-full"
+                                    style={{
+                                      color: "#ffffff",
+                                      filter: `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 16px ${color})`,
+                                      padding: "4px",
+                                    }}
+                                  >
+                                    <path d="M20 4H4c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 6H4V6h16v4zm0 4H4c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c0-1.1-.9-2-2-2zm0 6H4v-4h16v4z" />
+                                  </svg>
+                                )}
+                                {node.type === "cache" && (
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="w-full h-full"
+                                    style={{
+                                      color: "#ffffff",
+                                      filter: `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 16px ${color})`,
+                                      padding: "4px",
+                                    }}
+                                  >
+                                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-1.96-2.36L6.5 17h11l-3.54-4.71z" />
+                                  </svg>
+                                )}
+                                {node.type === "database" && (
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="w-full h-full"
+                                    style={{
+                                      color: "#ffffff",
+                                      filter: `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 16px ${color})`,
+                                      padding: "4px",
+                                    }}
+                                  >
+                                    <path d="M12 3C6.48 3 2 4.79 2 7s4.48 4 10 4 10-1.79 10-4-4.48-4-10-4zM2 9v6c0 2.21 4.48 4 10 4s10-1.79 10-4V9c0 2.21-4.48 4-10 4S2 11.21 2 9zm0 8v6c0 2.21 4.48 4 10 4s10-1.79 10-4v-6c0 2.21-4.48 4-10 4S2 19.21 2 17z" />
+                                  </svg>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
-                      {[...Array(12)].map((_, i) => {
-                        const angle = i * 30;
-                        const x =
-                          Math.round(
-                            (100 + 80 * Math.cos((angle * Math.PI) / 180)) * 10
-                          ) / 10;
-                        const y =
-                          Math.round(
-                            (100 + 80 * Math.sin((angle * Math.PI) / 180)) * 10
-                          ) / 10;
-                        return (
-                          <circle
-                            key={`node-${i}`}
-                            cx={x}
-                            cy={y}
-                            r="2"
-                            fill="rgba(34, 211, 238, 0.9)"
-                            className="animate-pulse"
-                            style={{
-                              animationDelay: `${i * 0.15}s`,
-                              filter:
-                                "drop-shadow(0 0 4px rgba(34, 211, 238, 1))",
-                            }}
-                          />
-                        );
-                      })}
-                    </svg>
-                  )}
-
-                  {[...Array(8)].map((_, i) => {
-                    const angle = i * 45 * (Math.PI / 180);
-                    const radius = 40;
-                    const x = 50 + radius * Math.cos(angle);
-                    const y = 50 + radius * Math.sin(angle);
-                    return (
-                      <div
-                        key={`node-${i}`}
-                        className="absolute w-2 h-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/80 animate-pulse"
-                        style={{
-                          left: `${x}%`,
-                          top: `${y}%`,
-                          animationDelay: `${i * 0.15}s`,
-                          boxShadow:
-                            "0 0 10px rgba(34, 211, 238, 0.8), 0 0 20px rgba(34, 211, 238, 0.6)",
-                        }}
-                      />
-                    );
-                  })}
-
-                  <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-cyan-400/40 blur-3xl animate-pulse" />
-                  <div className="absolute bottom-1/3 right-1/4 w-24 h-24 rounded-full bg-blue-400/30 blur-2xl" />
-
-                  <div className="absolute inset-4 rounded-full border border-cyan-400/30 shadow-[0_0_20px_rgba(34,211,238,0.3)]" />
-                  <div className="absolute inset-8 rounded-full border border-cyan-400/20" />
-                  <div className="absolute inset-12 rounded-full border border-cyan-400/10" />
-
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-cyan-400/20 via-transparent to-transparent" />
-
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-b from-transparent via-cyan-400/10 to-transparent animate-scan" />
-                </div>
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-500/20 blur-3xl rounded-full animate-pulse" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-500/15 blur-2xl rounded-full" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-500/10 blur-3xl rounded-full" />
               </div>
             </div>
           </motion.div>

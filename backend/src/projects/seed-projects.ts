@@ -67,6 +67,16 @@ const sampleProjects = [
     isActive: true,
     order: 6,
   },
+  {
+    title: 'AI-Powered Blog Platform',
+    category: 'Full-stack & AI',
+    image:
+      'https://devtorium.com/wp-content/webp-express/webp-images/uploads/2022/01/blog-image-wide_AI-powered_platform_for_marketing-2048x683.png.webp',
+    description:
+      'Nền tảng blog hiện đại tích hợp AI: tự động tạo tag, gợi ý bài viết liên quan, tóm tắt nội dung bằng OpenAI/Groq, hỗ trợ Markdown và SSR với Next.js + NestJS backend.',
+    isActive: true,
+    order: 7,
+  },
 ];
 
 async function seed() {
